@@ -5,6 +5,51 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.79 更新
+-----------
+* **修: 设置里选了 English, 界面仍然大片中文** —— 这次是彻底排查,
+  共四个根因(前三个都是"代码对但不生效", `node --check` 也查不出来):
+  ① **语言包被提前闭合**——`LANG_PACK.zh` 对象里混进一个提前的 `},`,
+     之后补的 258 个词条全部落在对象**外面**。JS 对此不报错, 但
+     渲染时 `t("key")` 找不到就**把 key 原样吐在界面上**。现在用括号配对
+     定位真正边界并校验(同时补了一个"游离词条"检查器)。
+  ② **13 个动态渲染函数没调 `applyI18n()`**——详情/仓库/连拍/照片墙/冲突/
+     手动改名/重名提示/目录选择器都是先 `innerHTML=` 重建再 `show`,
+     新建的节点从来没被翻译过。现在每个重建函数末尾都补一次。
+  ③ **`applyI18n` 用 `textContent` 会吃掉富文本**——带 `<code>` / `<b>` / `<br>` 的段落
+     一翻译就变成一行纯文字(代码片段、加粗、换行全没了)。新增
+     `data-i18n-html` 属性走 `innerHTML`, 并把 13 个富文本段落改过去。
+  ④ `.spec` 里的**打包后自检路径写死旧产物名**(`ZZMI-Mod-Manager`),
+     产物早已改叫 `Mod-Manager`, 于是自检永远报"产物里没有 PIL"而中止。
+* **全盘 English 化**: 语言包从 367 扩到 **674** 条(中英严格对称)。覆盖到
+  卡片状态徽章、详情弹窗全部字段、手动改名教程、重名提示、仓库搬运、
+  设置页全部条目、连拍挑帧、照片墙、错误页、全部 title / placeholder。
+  也修了一个真 bug: `lbClose2` 上重复写了两个 `data-i18n-title`。
+* **测试**: 新增 `tests/ui_i18n_full.js` ——造 jsdom 切英文后**把 16 个面板/弹窗逐个打开**,
+  用 TreeWalker 抓真实渲染出来的中文文本, 断言必须为 0(白名单只放
+  「简体中文」这个语言名)。这个测试能抓到前面三个根因造成的问题。
+* **验收**: 真机(打包后的 exe + Edge CDP)逐个弹窗扫描, 界面文案零中文残留;
+  剩下的汉字只是角色名、mod 名、磁盘路径这类用户数据。
+
+v1.5.77 更新
+-----------
+* **修: 切英文后界面还有大量中文** —— 两个原因:
+  ① `setLang()` 先重写 data-i18n、**再** renderAll()/renderSetup()，而那两个函数会用
+     模板字符串重建大片 DOM，把刚翻好的节点又换回中文原文。现在改成"先渲染、最后统一
+     套翻译"（新增 `applyI18n()`）。
+  ② 卡片上的「详情 / 重命名 / 只留这套 / 删除」是 JS 动态拼的，之前根本没走语言包。
+     现在全部改成 `t()`，并补了对应中英文词条。
+  顺手把侧栏、工具条、排序下拉、方案按钮、分页、搜索框 placeholder 也一并覆盖。
+* **修: 选「星穹铁道」切不过去** —— 两个原因:
+  ① 2 秒轮询的 renderAll() 会**重建 `<select>`**，如果它正好插在"你选完、请求未回"
+     之间，下拉被打回旧值，看起来像没反应。现在选项内容没变就不重建，且切换期间
+     锁住下拉并显示"切换中…"。
+  ② `doSwitchGame()` 里 `S = r.state` 遇到后端不返 state 时会把 S 变成 undefined，
+     紧接着 `renderAll()` 里 `S.games_visible` 抛异常 → 整个界面卡死。现在补了兜底：
+     缺 state 就自己再拉一次 `/api/state`。
+* **测试**: `ui_i18n.js` 从 16 项扩到 **24 项**，专门覆盖这两个 bug
+  （data-i18n 无中文残留、卡片四个按钮的英文、切换请求真的发出、轮询重绘不重置选择）。
+
 v1.5.76 更新
 -----------
 * **改: 程序图标换成露西**(用户提供)。裁成正方形 + 圆角, 9 档尺寸齐全。
@@ -967,7 +1012,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.76"
+VERSION = "1.5.79"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -1123,7 +1168,9 @@ if not os.path.isfile(ICON_PATH):
 # v1.5.71 每个游戏一张方形小图, 给界面左上角那个 34px logo 用。
 # 为什么不用合成图: 素材是 1.8:1 的横版横幅, 缩到 34px 只剩两团色斑
 # (用户原话"左上角有漏洞/破方块")。方图只留该游戏的识别特征, 34px 才看得清。
-GAME_ICON_FILES = {"ZZMI": "game-zzmi.png", "WWMI": "game-wwmi.png"}
+GAME_ICON_FILES = {"ZZMI": "game-zzmi.png",
+                   "SRMI": "game-srmi.png",
+                   "WWMI": "game-wwmi.png"}
 
 
 def _game_icon_path(importer):
@@ -1161,10 +1208,18 @@ DEFAULT_CONFIG = {
     "importer": "ZZMI",
     "game_exe": "",
     "mods_dir": "",
+    # v1.5.76: 用户勾选启用的游戏(值是 game key, 如 "zzmi"/"srmi"/"wwmi")。
+    # 空列表 = 还没勾过, 由 _effective_games() 自动按"目录存在"补齐。
+    # 切换器只显示「已勾选 且 检测到目录」的游戏; 设置页仍列出全部游戏供勾选。
+    "enabled_games": [],
     "libraries": [],
     "libs_abs": [],         # 锁定为仓库的绝对路径(可以在任意盘, 不必在 XXMI 目录下)
     "custom_dirs": [],      # 「自定义文件夹」最近用过的目标(完整路径)
     "theme": "dark",
+    # v1.5.78: 界面语言 zh / en。存后端配置而不是 localStorage ——
+    # 本地服务每次启动端口不同(127.0.0.1:xxxxx), 而 localStorage 按
+    # 协议+域名+端口隔离, 所以每次启动都是新 origin, 存前端会丢。
+    "lang": "zh",
     "hide_preview": False,
     "char_overrides": {},
     "thumb_overrides": {},
@@ -1179,7 +1234,10 @@ DEFAULT_CONFIG = {
     "show_translated": True,    # v1.5.12 下载区: 是否显示中文译名
     # v1.5.67: 脚本启动功能已移除, 不再需要 zzz_tool_dir
     # v1.5.69: 「国服⇄国际服 文件替换」功能已整体删除
-    "photo_on": True,           # v1.5.31 连拍缓冲: 游戏运行时是否后台录屏
+    "photo_on": True,           # v1.5.31 连拍缓冲: 连拍功能总开关
+    # v1.5.76: 是否**持续**在后台滚动抓屏。默认关(省约 70% 单核);
+    # 打开后点「📸 连拍」能立刻出画面(不用等 3 秒), 代价是游戏在前台时一直抓。
+    "photo_scroll_buffer": False,
     "photo_hotkey": "Ctrl+Shift+C",   # v1.5.31 连拍触发键(可改)
     "photo_mouse_btn": 1,       # v1.5.32 鼠标侧键: 0=关 1=侧键1(后退) 2=侧键2(前进)
     # v1.5.42 连拍触发条件: True=只有绝区零窗口在前台才触发/录制(默认);
@@ -1228,19 +1286,28 @@ GAME_KEYS = (
 # importer -> 展示信息。只是兜底; 有 XXMI Launcher Config.json 时以它为准,
 # 因为官方配置里的 game_exe_names / process_exe_names 才是权威。
 IMPORTER_META = {
-    "ZZMI": {"label": "绝区零", "game": "ZENLESS_ZONE_ZERO",
+    "ZZMI": {"label": "绝区零", "label_en": "Zenless Zone Zero",
+             "game": "ZENLESS_ZONE_ZERO",
              "exe": ["ZenlessZoneZero.exe", "ZenlessZoneZeroBeta.exe"],
              "proc": [], "char_table": "zzz"},
-    "WWMI": {"label": "鸣潮", "game": "WUTHERING_WAVES",
+    "SRMI": {"label": "星穹铁道", "label_en": "Honkai: Star Rail",
+             "game": "HONKAI_STAR_RAIL",
+             "exe": ["StarRail.exe"],
+             # 实测: 星铁的真进程就是 StarRail.exe(1.2GB), 不像鸣潮那样转发,
+             # 所以 proc 留空也能认出来。留空还有个好处: 将来若真转发到别的进程名,
+             # 从 XXMI 配置的 process_exe_names 读进来即可, 这里不用改。
+             "proc": [], "char_table": None},
+    "WWMI": {"label": "鸣潮", "label_en": "Wuthering Waves",
+             "game": "WUTHERING_WAVES",
              "exe": ["Wuthering Waves.exe"],
              # 鸣潮真正在前台跑的是 Client-Win64-Shipping.exe, 不是 Wuthering Waves.exe。
              # 少了这一条, 在鸣潮里按侧键会被「游戏不在前台」直接拒掉。
              "proc": ["Client-Win64-Shipping.exe"], "char_table": None},
 }
 
-# 本工具只做这两个游戏(用户明确要求: 不做通用多游戏框架)。
-# 顺序 = 切换器里的显示顺序, 绝区零在前(历史默认)。
-IMPORTER_ORDER = ("ZZMI", "WWMI")
+# 本工具支持的游戏(用户明确要求: 只做这几款, 不做通用框架)。
+# 顺序 = 切换器里的默认显示顺序。
+IMPORTER_ORDER = ("ZZMI", "SRMI", "WWMI")
 
 
 def importer_label(imp):
@@ -5698,7 +5765,15 @@ class BurstBuffer(object):
             # 不再傻等 0.8s 才回头看见 self.rec。
             self._rec_event.wait(0.8)
             return True
-        # v1.5.42: 只在「绝区零在前台」时滚动录制(省电省 CPU, 也避免逛网页时
+        # v1.5.76 性能: 默认**不再持续抓屏**。
+        # 原来游戏一在前台就以 24fps 死抓(实测单帧 72ms, 理论只有 13.9fps,
+        # 等于常驻吃掉约 70% 单核)。而 v1.5.37 之后连拍已改成"按下之后才录",
+        # 这个滚动缓冲只剩「📸 连拍」按钮在没缓存时才会用到 —— 为它全程烧一个核不值。
+        # 想恢复老行为(点连拍立刻有画面): 设置 → 连拍缓冲 → 打开「持续后台录制」。
+        if not cfg.get("photo_scroll_buffer", False):
+            self._rec_event.wait(0.5)
+            return True
+        # v1.5.42: 只在「游戏在前台」时滚动录制(省电省 CPU, 也避免逛网页时
         # 误按侧键录到无关画面); 设置 photo_only_in_game=false 可切回老行为。
         if not _burst_allowed_now(cfg):
             self._rec_event.wait(0.5)
@@ -5837,12 +5912,43 @@ class BurstBuffer(object):
                 "target_fps": self.TARGET_FPS}
 
     def trigger(self):
-        """📸 手动触发: 拿滚动缓冲里现有的帧封一批(保留旧行为)。"""
+        """📸 手动触发一批连拍。
+
+        v1.5.76: 滚动缓冲默认关了(省 CPU)。所以这里分两种情况:
+          ① 缓冲里有货(用户开了「持续后台录制」)  -> 直接拿现有帧封批, 秒出
+          ② 缓冲是空的(默认情况)                  -> **现场录 N 秒**, 录完封批返回
+        第 ② 种会让界面等几秒, 但换来的是游戏全程不烧 CPU。
+        """
         with self.lock:
             snap = list(self.ring)
-        if len(snap) < 2:
+        if len(snap) >= 2:
+            return self._build_burst(snap)
+        # 缓冲空 -> 现场录一段。用和侧键完全相同的录制路径, 保证帧质量一致。
+        cfg = self.app.cfg or {}
+        if not _burst_allowed_now(cfg):
             return {"ok": False, "msg": self._why_empty()}
-        return self._build_burst(snap)
+        secs = self._secs()
+        grabbed = []
+        grab = self.grab or self._default_grab
+        deadline = time.time() + secs
+        step = 1.0 / self.TARGET_FPS
+        next_t = time.time()
+        while time.time() < deadline:
+            try:
+                got = grab()
+            except Exception:
+                log("现场连拍抓屏失败:\n" + traceback.format_exc())
+                break
+            if not got:
+                break
+            grabbed.append(got)
+            next_t += step
+            sleep_for = next_t - time.time()
+            if sleep_for > 0:
+                time.sleep(sleep_for)
+        if len(grabbed) < 2:
+            return {"ok": False, "msg": self._why_empty()}
+        return self._build_burst(grabbed, secs=secs)
 
     def ack(self, burst_id=0):
         """v1.5.37: 前端把这一批**弹出来给用户看过**了, 可以清 pending 标记。
@@ -6619,23 +6725,78 @@ class App(object):
 
     # ---- v1.5.71: 多游戏 ------------------------------------------------
     def game_list(self):
-        """当前已知的游戏档案摘要(给顶部切换器用)。"""
+        """当前已知的游戏档案摘要(给顶部切换器用)。
+
+        v1.5.76 起带两层过滤:
+          - `visible`: 只在切换器里显示「已勾选 + 目录存在」的游戏
+          - `checked`: 用户在设置页勾选过(不管目录在不在)
+        这样鸣潮卸载后不会占着切换器的位置, 但还是能在设置页勾回来。
+        没勾过任何游戏时(enabled_games 为空), 按"目录存在"自动当成已勾选,
+        保证老用户升级上来行为不变。
+        """
         games = self.cfg.get("games") or {}
         active = self.cfg.get("active_game") or ""
+        checked = [str(x).lower() for x in (self.cfg.get("enabled_games") or [])]
+        auto = not checked           # 从没勾过 -> 自动模式
         out = []
         for gid, prof in games.items():
             imp = str((prof or {}).get("importer") or gid).upper()
             md = (prof or {}).get("mods_dir") or ""
+            exists = bool(md and os.path.isdir(md))
+            is_checked = exists if auto else (gid.lower() in checked)
             out.append({"id": gid,
                         "importer": imp,
                         "label": importer_label(imp),
+                        "label_en": (IMPORTER_META.get(imp) or {}).get("label_en")
+                                    or importer_label(imp),
                         "mods_dir": md,
                         "root": (prof or {}).get("xxmi_root") or "",
-                        "exists": bool(md and os.path.isdir(md)),
+                        "exists": exists,
+                        "checked": is_checked,
+                        # 切换器里露不露面: 勾了 + 目录在
+                        "visible": bool(is_checked and exists),
                         "active": gid == active})
         out.sort(key=lambda g: (IMPORTER_ORDER.index(g["importer"])
                                 if g["importer"] in IMPORTER_ORDER else 99))
         return out
+
+    def game_list_visible(self):
+        """只返回该出现在切换器里的游戏。
+
+        万一用户勾了的游戏此刻目录不在(比如移动盘没插), 会把当前活动那个
+        强行带上 —— 否则界面会显示"没有一个游戏"。
+        """
+        allg = self.game_list()
+        vis = [g for g in allg if g["visible"]]
+        active = self.cfg.get("active_game") or ""
+        if active and not any(g["id"] == active for g in vis):
+            for g in allg:
+                if g["id"] == active:
+                    g = dict(g); g["visible"] = True
+                    vis.append(g)
+                    break
+        return vis
+
+    def set_games_enabled(self, keys):
+        """设置页「游戏管理」勾选后调用。keys = 游戏 id 列表。"""
+        games = self.cfg.get("games") or {}
+        clean = []
+        for k in (keys or []):
+            k = str(k or "").strip().lower()
+            if k and k in games and k not in clean:
+                clean.append(k)
+        with self.lock:
+            self.cfg["enabled_games"] = clean
+        # 当前活动游戏被取消勾选了 -> 切到第一个还能用的
+        avail = [g for g in self.game_list() if g["visible"]]
+        active = self.cfg.get("active_game") or ""
+        if avail and not any(g["id"] == active for g in avail):
+            try:
+                self.switch_game(avail[0]["id"])
+            except Exception:
+                pass
+        self.save_config()
+        return True, "已保存"
 
     def switch_game(self, gid):
         """切到另一个游戏。把当前这份摊平配置回写进它自己的档案, 再摊平新的。
@@ -6987,7 +7148,11 @@ class App(object):
             "mods_dir": md,
             "mods_dir_exists": bool(md and os.path.isdir(md)),
             # v1.5.71 多游戏: 顶部切换器要的摘要 + 每游戏的界面状态
+            # v1.5.76: games 给设置页用(含所有已知游戏 + checked/exists 标记);
+            # games_visible 给切换器用(只有勾选了且目录在的)
             "games": self.game_list(),
+            "games_visible": self.game_list_visible(),
+            "enabled_games": self.cfg.get("enabled_games") or [],
             "active_game": self.cfg.get("active_game") or "",
             "views": self.cfg.get("views") or {},
             "game_label": importer_label(self.cfg.get("importer")),
@@ -7000,6 +7165,7 @@ class App(object):
             "libs_abs": self.cfg.get("libs_abs", []),
             "custom_dirs": self.cfg.get("custom_dirs", []),
             "theme": self.cfg.get("theme", "dark"),
+            "lang": self.cfg.get("lang") or "zh",
             "hide_preview": bool(self.cfg.get("hide_preview")),
             "hotkey": self.cfg.get("hotkey", "F9"),
             "hotkey_ok": self.hotkey.ok is not False,
@@ -7031,6 +7197,8 @@ class App(object):
             "game_running": game, "launcher_running": launcher,
             # v1.5.31 连拍缓冲
             "photo_on": bool(self.cfg.get("photo_on", True)),
+            # v1.5.76: 是否在后台持续滚动抓屏（默认 False = 省 CPU）
+            "photo_scroll_buffer": bool(self.cfg.get("photo_scroll_buffer", False)),
             # v1.5.68: 连拍能不能用(依赖 Pillow)。只有明确探测到缺失才是 False,
             # 没探测过(None)按可用算, 免得误报。
             "photo_ok": (getattr(getattr(self, "burst", None),
@@ -7734,19 +7902,73 @@ GB_CHAR_CN = {
     "roxy ifrita pryce": "萝克茜·伊芙莉塔·普莱斯",
 }
 
+# ---------------------------------------------------------------------------
+# v1.5.76: 星穹铁道 / 鸣潮 角色名对照（英文转写 -> 中文）。
+# 只用于「下载区」把 GameBanana 上的英文 mod 名译成中文; 表里没有的会走机翻兜底,
+# 所以这张表不全也不影响使用, 只是译名可能更机械。
+# 数据来源: 游戏内官方中文名 (按社区常用的英文转写整理)。
+# ---------------------------------------------------------------------------
+SR_CHAR_CN = {
+    # --- 星穹铁道 ---
+    "trailblazer": "开拓者", "march 7th": "三月七", "dan heng": "丹恒",
+    "himeko": "姬子", "welt": "瓦尔特", "kafka": "卡芙卡",
+    "silver wolf": "银狼", "blade": "刃", "jing yuan": "景元",
+    "bronya": "布洛妮娅", "seele": "希儿", "serval": "希露瓦",
+    "gepard": "杰帕德", "pela": "佩拉", "clara": "克拉拉",
+    "sampo": "桑博", "hook": "虎克", "natasha": "娜塔莎",
+    "asta": "艾丝妲", "herta": "黑塔", "armin": "阿兰",
+    "tingyun": "停云", "bailu": "白露", "qingque": "青雀",
+    "sushang": "素裳", "yanqing": "彦卿", "fu xuan": "符玄",
+    "jingliu": "镜流", "luocha": "罗刹", "yukong": "驭空",
+    "lynx": "玲可", "luka": "卢卡", "topaz": "托帕",
+    "guinaifen": "桂乃芬", "hanya": "寒鸦", "xueyi": "雪衣",
+    "ruan mei": "阮·梅", "dr. ratio": "阮·梅博士" , "ratio": "真理医生",
+    "black swan": "黑天鹅", "sparkle": "花火", "misha": "米沙",
+    "gallagher": "加拉赫", "aventurine": "砂金", "robin": "知更鸟",
+    "boothill": "波提欧", "firefly": "流萤", "jade": "翡翠",
+    "yunli": "云璃", "jiaoqiu": "交丘", "feixiao": "飞霄",
+    "lingsha": "灵砂", "moze": "貊泽", "rappa": "乱破",
+    "sunday": "星期日", "fugue": "缇宝", "tribbie": "崔比",
+    "aglaea": "阿格莱雅", "mydei": "迈德伊", "castorice": "卡斯特丽丝",
+    "anaxa": "阿纳克萨", "hyacine": "海瑟音", "cerydra": "瑟希拉",
+    "hysilens": "希茜莲", "phainon": "白厄", "cyrene": "赛琳",
+    # --- 鸣潮 ---
+    "rover": "漂泊者", "yangyang": "秧秧", "chixia": "炽霞",
+    "baizhi": "白芷", "sanhua": "散华", "danjin": "丹瑾",
+    "taoqi": "桃祈", "yuanwu": "渊武", "mortefi": "莫特斐",
+    "encore": "安可", "calcharo": "卡卡罗", "verina": "维里奈",
+    "jianxin": "鉴心", "lingyang": "凌阳", "yinlin": "吟霖",
+    "jiyan": "忌炎", "jinhsi": "今汐", "changli": "长离",
+    "zhezhi": "折枝", "xiangli yao": "相里要", "shorekeeper": "守岸人",
+    "camellya": "椿", "carlotta": "珂莱塔", "roccia": "洛可可",
+    "brant": "布兰特", "zani": "赞妮", "cartethyia": "卡提希娅",
+    "ciaccona": "恰空", "phoebe": "菲比", "cantarella": "坎特蕾拉",
+    "lupa": "露帕", "augusta": "奥古斯塔", "iuno": "尤诺",
+    "galbrena": "加布拉娜", "qiuyuan": "秋原", "chisa": "千咲",
+    "buling": "卜灵",
+}
+
 
 def gb_char_cn(name):
-    """角色英文名 -> 官方中文名。对照表命中就用表, 否则机翻, 都失败返回原文。"""
+    """角色英文名 -> 官方中文名。对照表命中就用表, 否则机翻, 都失败返回原文。
+
+    v1.5.76: 三张表依次查（绝区零 -> 星铁/鸣潮）。表是按游戏分的,
+    但同一个英文名的译名在三个游戏里不会冲突, 所以直接合并查即可。
+    """
     n = (name or "").strip()
     if not n:
         return ""
     k = re.sub(r"\s+", " ", n).lower()
     if k in GB_CHAR_CN:
         return GB_CHAR_CN[k]
+    if k in SR_CHAR_CN:
+        return SR_CHAR_CN[k]
     # 去掉常见后缀再试一次(如 "Anby (ZZZ)")
     k2 = re.sub(r"[\(\[].*?[\)\]]", "", k).strip()
     if k2 in GB_CHAR_CN:
         return GB_CHAR_CN[k2]
+    if k2 in SR_CHAR_CN:
+        return SR_CHAR_CN[k2]
     try:
         tr = gb_translate_one(n)
         return tr if (tr and tr.lower() != n.lower()) else n
@@ -8325,6 +8547,19 @@ class Handler(BaseHTTPRequestHandler):
                 ok, msg = app.switch_game(body.get("game") or "")
                 return self._json({"ok": ok, "msg": msg,
                                    "state": app.state() if ok else None})
+
+            # v1.5.76: 设置页「游戏管理」—— 勾选/取消勾选哪些游戏进切换器
+            if act == "set_games":
+                keys = body.get("games")
+                if not isinstance(keys, list):
+                    keys = []
+                ok, msg = app.set_games_enabled(keys)
+                # 勾了但目录不存在的, 明确告诉用户哪些没找到
+                miss = [g["label"] for g in app.game_list()
+                        if g["checked"] and not g["exists"]]
+                return self._json({"ok": ok, "msg": msg,
+                                   "missing": miss,
+                                   "state": app.state()})
 
             # v1.5.71: 原本这里还有个 act=="detect_games" 的接口(给顶栏「+ 添加」
             # 按钮用)。用户拍板不要那个按钮 —— 启动时 main() 已经把 XXMI 根下
@@ -9077,6 +9312,10 @@ class Handler(BaseHTTPRequestHandler):
         if body.get("mods_dir"):
             app.cfg["mods_dir"] = body["mods_dir"].strip().strip('"')
             changed = True
+        if "lang" in body:
+            v = str(body["lang"] or "").lower()
+            app.cfg["lang"] = "en" if v == "en" else "zh"
+            changed = True
         if "theme" in body:
             app.cfg["theme"] = body["theme"]
             changed = True
@@ -9138,9 +9377,25 @@ class Handler(BaseHTTPRequestHandler):
             app.cfg["photo_only_in_game"] = bool(body["photo_only_in_game"])
             app.save_config()
             return {"ok": True,
-                    "msg": ("连拍: 只在绝区零前台时触发"
+                    "msg": ("连拍: 只在当前游戏前台时触发"
                             if app.cfg["photo_only_in_game"]
                             else "连拍: 只要管家不在最前就触发"),
+                    "state": app.state()}
+        if "photo_scroll_buffer" in body:
+            # v1.5.76: 持续后台滚动缓冲（省 CPU 的开关）
+            v = bool(body["photo_scroll_buffer"])
+            app.cfg["photo_scroll_buffer"] = v
+            if not v:
+                # 关掉时把已攒的 rolling 缓冲清空，别留着占内存
+                try:
+                    with app.burst.lock:
+                        app.burst.ring = []
+                except Exception:
+                    pass
+            app.save_config()
+            return {"ok": True,
+                    "msg": ("持续后台缓冲: 开（点连拍秒出，约 70% 单核）" if v
+                            else "持续后台缓冲: 关（省 CPU，点连拍会现录几秒）"),
                     "state": app.state()}
         if "photo_seconds" in body:
             try:

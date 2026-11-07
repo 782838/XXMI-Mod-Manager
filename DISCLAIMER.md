@@ -13,10 +13,15 @@ This project (**Mod Manager**, formerly published as `ZZMI-Mod-Manager`) is a **
 management utility**. It only performs local filesystem operations on XXMI Launcher mod files —
 enabling, disabling, organizing, categorizing and moving them.
 
-It currently supports two games:
+It currently supports **three games**:
 
 - **Zenless Zone Zero** (via the `ZZMI` importer)
+- **Honkai: Star Rail** (via the `SRMI` importer)
 - **Wuthering Waves** (via the `WWMI` importer)
+
+**Requires XXMI Launcher.** The tool only manages the `Mods` folders that XXMI's
+importers create; it does not launch or inject mods itself, and cannot work
+without XXMI installed.
 
 This tool **does NOT**:
 
@@ -26,15 +31,15 @@ This tool **does NOT**:
 
 ### 2. No Affiliation
 
-*Zenless Zone Zero* is developed and operated by HoYoverse (miHoYo).
+*Zenless Zone Zero* and *Honkai: Star Rail* are developed and operated by HoYoverse (miHoYo).
 *Wuthering Waves* is developed and operated by Kuro Games.
 
-This project is **not affiliated with, endorsed by, authorized by, or sponsored by** either
-company in any way. All game-related trademarks and copyrights belong to their respective owners.
+This project is **not affiliated with, endorsed by, authorized by, or sponsored by** any of
+these companies in any way. All game-related trademarks and copyrights belong to their respective owners.
 
 ### 3. Risk Warning
 
-The terms of service of **both games do not permit the use of mods**.
+The terms of service of **all three games do not permit the use of mods**.
 Using mods may result in **account suspension or permanent ban**, or other consequences
 imposed by the game operator.
 
@@ -60,8 +65,8 @@ damage resulting from its use.
 
 ### Short version
 
-> A local mod manager for *Zenless Zone Zero* and *Wuthering Waves* — it only touches local
-> files and never modifies the game. Neither game officially supports modding; using mods risks
+> A local mod manager for *Zenless Zone Zero*, *Honkai: Star Rail* and *Wuthering Waves* —
+> it only touches local files and never modifies the game. Requires XXMI Launcher. Neither game officially supports modding; using mods risks
 > an account ban, and all consequences are the user's own responsibility. Not affiliated with
 > HoYoverse or Kuro Games; for personal, non-commercial technical study only.
 
@@ -74,10 +79,14 @@ damage resulting from its use.
 本项目（**Mod 管家**，旧名 `ZZMI-Mod-Manager`）仅为**本地文件管理工具**，仅对 XXMI Launcher
 下的模组文件进行启用、禁用、目录整理、分类与搬运等本地文件操作。
 
-目前支持两个游戏：
+目前支持**三款**游戏：
 
 - **绝区零**（走 `ZZMI` 注入器）
+- **崩坏：星穹铁道**（走 `SRMI` 注入器）
 - **鸣潮**（走 `WWMI` 注入器）
+
+**必须配合 XXMI Launcher 使用。** 本工具只管理 XXMI 各注入器生成的 `Mods` 目录，
+自身不做启动注入，没有安装 XXMI 就无法使用。
 
 本工具**不会**：
 
@@ -87,14 +96,15 @@ damage resulting from its use.
 
 ### 2. 与官方无关
 
-《绝区零》由米哈游（HoYoverse）开发并运营；《鸣潮》由库洛游戏（Kuro Games）开发并运营。
+《绝区零》《崩坏：星穹铁道》由米哈游（HoYoverse）开发并运营；
+《鸣潮》由库洛游戏（Kuro Games）开发并运营。
 
-本项目与上述两家公司**均不存在任何关联、授权、背书或赞助关系**。
+本项目与上述公司**均不存在任何关联、授权、背书或赞助关系**。
 相关游戏商标与著作权归各自权利人所有。
 
 ### 3. 风险提示
 
-**两款游戏的用户协议均不支持使用模组**。使用模组可能导致**账号封禁或其他处罚**。
+**三款游戏的用户协议均不支持使用模组**。使用模组可能导致**账号封禁或其他处罚**。
 
 **因使用本工具产生的一切风险与后果，均由使用者本人自行承担**，项目作者不承担任何责任。
 
@@ -114,6 +124,6 @@ damage resulting from its use.
 
 ### 精简版
 
-> 本工具是《绝区零》《鸣潮》模组的本地文件管理器，仅操作本地文件，绝不修改游戏程序。
-> 两款游戏官方均不支持 MOD，使用 MOD 存在账号封禁风险，一切后果由使用者自行承担。
+> 本工具是《绝区零》《崩坏：星穹铁道》《鸣潮》模组的本地文件管理器，仅操作本地文件，绝不修改游戏程序。
+> 必须配合 XXMI Launcher 使用。三款游戏官方均不支持 MOD，使用 MOD 存在账号封禁风险，一切后果由使用者自行承担。
 > 本项目与米哈游、库洛游戏均无任何关系，仅作个人技术学习使用，禁止商用。

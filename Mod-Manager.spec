@@ -26,7 +26,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('ui.html', '.'), ('bg.jpg', '.'), ('installer/app.ico', '.'),
-           ('installer/game-zzmi.png', '.'), ('installer/game-wwmi.png', '.')],
+           ('installer/game-zzmi.png', '.'), ('installer/game-srmi.png', '.'),
+           ('installer/game-wwmi.png', '.')],
     # v1.5.68: 连拍用 PIL。PIL.JpegImagePlugin 是保存 JPEG 时才延迟导入的,
     # PyInstaller 静态分析抓不到, 必须显式列出来(否则打包后存图报
     # "encoder jpeg not available")。
@@ -86,7 +87,9 @@ coll = COLLECT(
 # 仍然可能产出"没有 PIL 的包"。这里在 COLLECT 之后直接查产物目录, 缺了就报错。
 # ===========================================================================
 import os as _os
-_pil_pkg = _os.path.join(DISTPATH, 'ZZMI-Mod-Manager', '_internal', 'PIL')
+# v1.5.79: 产物目录早改成 Mod-Manager 了, 这里原来还写着旧名 ZZMI-Mod-Manager,
+# 结果自检永远找不到 PIL 而误报中止。改成跟 EXE/COLLECT 的 name 一致。
+_pil_pkg = _os.path.join(DISTPATH, 'Mod-Manager', '_internal', 'PIL')
 if not _os.path.isdir(_pil_pkg):
     raise SystemExit(
         "\n" + "=" * 66 + "\n"

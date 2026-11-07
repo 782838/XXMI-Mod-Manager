@@ -1,13 +1,28 @@
 # Mod Manager · Mod 管家
 
-A local mod manager for **Zenless Zone Zero** and **Wuthering Waves** (via XXMI Launcher).
-It turns "rename folders by hand" into a few clicks.
+A local mod manager for **Zenless Zone Zero**, **Honkai: Star Rail** and **Wuthering Waves**.
 
-**绝区零**与**鸣潮**的 Mod 管理界面（走 XXMI Launcher）。把「进文件夹手动改名」变成点几下鼠标。
+> ⚠️ **Requires [XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher).**
+> This tool manages the `Mods` folders created by XXMI's importers
+> (`ZZMI` / `SRMI` / `WWMI`). **It cannot work without XXMI installed.**
+> It does **not** launch or inject mods by itself — XXMI does that.
+>
+> **Currently supports exactly three games** (listed above). Other games are not supported.
 
-切换器一键在两个游戏之间切换, 两边的 mod 列表、收藏、方案、照片目录完全独立, 互不干扰。
+**绝区零**、**崩坏：星穹铁道**、**鸣潮** 的 Mod 管理界面。
 
-> 📖 **Language / 语言**：English first, Chinese below. 英文在前，中文在后（本项目主要面向中文用户）。
+> ⚠️ **必须配合 [XXMI Launcher](https://github.com/SpectrumQT/XXMI-Launcher) 使用。**
+> 本工具管理的是 XXMI 各注入器（`ZZMI` / `SRMI` / `WWMI`）生成的 `Mods` 目录。
+> **没有安装 XXMI 就无法使用。** 本工具本身不做启动注入 —— 注入由 XXMI 负责。
+>
+> **目前只支持上面这三款游戏**，其它游戏暂不支持。
+
+顶栏下拉框一键切换游戏，三个游戏的 mod 列表、收藏、方案、照片目录**完全独立**，互不干扰。
+设置里可以勾选只显示你实际在玩的游戏。
+
+界面支持**简体中文 / English** 切换（设置 → 语言）。
+
+> 📖 This README is bilingual — English first, Chinese below.
 
 ---
 
@@ -18,9 +33,10 @@ It turns "rename folders by hand" into a few clicks.
 This project is a **local file management utility only**. It does not modify game binaries,
 inject the game process, tamper with game memory, and it ships **no game or mod assets**.
 
-*Zenless Zone Zero* is developed by HoYoverse; *Wuthering Waves* is developed by Kuro Games.
-This project is **not affiliated with, endorsed, or authorized by** either company.
-Both games' terms of service **do not allow modding**; using mods may result in an
+*Zenless Zone Zero* and *Honkai: Star Rail* are developed by HoYoverse (miHoYo);
+*Wuthering Waves* is developed by Kuro Games.
+This project is **not affiliated with, endorsed, or authorized by** any of these companies.
+The terms of service of all three games **do not allow modding**; using mods may result in an
 **account ban**. **All risks and consequences are borne by the user.**
 
 Provided for personal learning and research only; commercial use and repackaged distribution
@@ -28,8 +44,12 @@ are prohibited. Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Features
 
-- **Two games, one window** — a switcher flips between *Zenless Zone Zero* and *Wuthering Waves*;
-  each keeps its own mod list, directory, favourites, presets and screenshot folder
+- **Three games, one window** — a dropdown flips between *Zenless Zone Zero*,
+  *Honkai: Star Rail* and *Wuthering Waves*; each keeps its own mod list, directory,
+  favourites, presets and screenshot folder
+- **Pick which games to show** — Settings → Games lets you tick only the games you play;
+  unticked ones disappear from the switcher (nothing is deleted)
+- **Bilingual UI** — switch between Simplified Chinese and English in Settings
 - **Zero configuration** — auto-detects your XXMI install, Mods folders, launcher and game paths
 - **Native-feeling window** — opened via Edge/Chrome `--app`, no address bar
 - **Proxy-proof** — forces a direct connection to `127.0.0.1` (system proxies often break localhost)
@@ -126,14 +146,18 @@ Tests run against sandbox folders only (never your real mods):
 本项目仅为**本地文件管理工具**，不修改游戏本体、不注入游戏进程、不篡改游戏内存，
 **不内置任何游戏或模组资源**。
 
-《绝区零》为米哈游旗下游戏，《鸣潮》为库洛游戏旗下游戏。本项目与上述两家公司**均无任何关联、未获授权**。
-两款游戏的用户协议**均不支持使用模组**，使用模组存在**账号封禁风险**，
+《绝区零》《崩坏：星穹铁道》为米哈游旗下游戏，《鸣潮》为库洛游戏旗下游戏。
+本项目与上述公司**均无任何关联、未获授权**。
+三款游戏的用户协议**均不支持使用模组**，使用模组存在**账号封禁风险**，
 **一切后果由使用者本人自行承担**。仅用于个人技术学习研究，禁止商用与分发整合包。
 完整声明见 [DISCLAIMER.md](DISCLAIMER.md)。
 
 ## 功能
 
-- **零配置**：启动后自动在本机找到你的 XXMI 安装位置、各游戏 Mods 目录、启动器、游戏路径
+- **三游戏一个窗口**：顶栏下拉框切换绝区零 / 星穹铁道 / 鸣潮，各自的 mod 列表、目录、收藏、方案、照片互不干扰
+- **可以只显示在玩的游戏**：设置 → 游戏管理 勾选，没勾的从切换器里消失（不删任何东西）
+- **界面支持中/英双语**：设置 → 语言 切换
+- **零配置**：启动后自动找到你的 XXMI 安装位置、各游戏 Mods 目录、启动器、游戏路径
 - **独立窗口**：用 Edge/Chrome 的 App 模式打开，看起来就是个软件，没有地址栏
 - **自动绕过代理**：很多人 127.0.0.1 被系统代理拦截导致"点了没反应"，这个程序强制直连，绕开这个坑
 - **按角色分类**：自动从 mod 名识别角色（可手改），一个角色几套 mod 一眼看清
@@ -188,7 +212,7 @@ Tests run against sandbox folders only (never your real mods):
 2. 找到了：顶部显示绿色路径，直接能用
 3. 没找到：点顶部红色提示（或 ⚙ 设置）→ 填 XXMI 路径 → 「保存并扫描」
 
-**"XXMI 路径"填哪一层？** 含有 `Resources\Bin\XXMI Launcher.exe` 和 `ZZMI\` / `WWMI\` 子目录的那一层：
+**"XXMI 路径"填哪一层？** 含有 `Resources\Bin\XXMI Launcher.exe` 和 `ZZMI\` / `SRMI\` / `WWMI\` 子目录的那一层：
 
 ```
 D:\Mods                         <- 填这一层

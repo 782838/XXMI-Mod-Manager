@@ -1,11 +1,12 @@
 ; Mod 管家 — 安装程序脚本 (Inno Setup 6)
 ; 编译: ISCC.exe setup.iss
-; 特性: 普通权限安装(无 UAC)、自动创建快捷方式、装完自动启动、首次启动自动检测 XXMI 路径
+; 特性: 普通权限安装(无 UAC)、自动创建快捷方式、自动刷新图标缓存、首次启动自动检测 XXMI 路径
+; 支持游戏: 绝区零(ZZMI) / 崩坏:星穹铁道(SRMI) / 鸣潮(WWMI) —— 必须配合 XXMI Launcher 使用
 
 #define MyAppName "Mod 管家"
 ; 目录名与英文名: 新版统一叫 Mod Manager, 安装时会把旧的目录/快捷方式清理掉
 #define MyAppNameEn "Mod Manager"
-#define MyAppVersion "1.5.76"
+#define MyAppVersion "1.5.79"
 #define MyAppExeName "Mod-Manager.exe"
 #define MyAppId "{{8F3D6C21-9A47-4E5B-B0D2-77A1C3E9F504}"
 
@@ -41,9 +42,9 @@ UsePreviousAppDir=yes
 Name: "chs"; MessagesFile: "ChineseSimplified.isl"
 
 [Messages]
-chs.WelcomeLabel2=这将安装 [name/ver] 到你的电脑。%n%n安装完成后无需任何配置: 程序会在首次启动时自动检测本机 XXMI 的安装位置, 检测不到时也可以在界面里手动填写。%n%n建议先关闭正在运行的游戏与 XXMI Launcher。
-chs.FinishedLabelNoIcons=安装完成!%n%n「[name]」已装到本机。%n%n请通过桌面快捷方式启动(会弹 UAC, 点【是】)。首次启动会自动检测 XXMI 安装目录, 无需手动配置。
-chs.FinishedLabel=安装完成!%n%n「[name]」已装到本机。%n%n请通过桌面快捷方式启动(会弹 UAC, 点【是】)。首次启动会自动检测 XXMI 安装目录, 无需手动配置。
+chs.WelcomeLabel2=这将安装 [name/ver] 到你的电脑。%n%n支持三款游戏: 绝区零 / 崩坏: 星穹铁道 / 鸣潮。%n%n重要: 本工具必须配合 XXMI Launcher 使用 —— 它只管理 XXMI 各注入器(ZZMI / SRMI / WWMI)生成的 Mods 目录, 自身不做启动注入。没有安装 XXMI 就无法使用。%n%n安装完成后无需任何配置: 首次启动会自动检测本机 XXMI 的安装位置, 检测不到时也可以在界面里手动填写。%n%n建议先关闭正在运行的游戏与 XXMI Launcher。
+chs.FinishedLabelNoIcons=安装完成!%n%n「[name]」已装到本机。支持绝区零 / 崩坏: 星穹铁道 / 鸣潮, 必须配合 XXMI Launcher 使用。%n%n请通过桌面快捷方式启动(会弹 UAC, 点【是】)。首次启动会自动检测 XXMI 安装目录, 无需手动配置。
+chs.FinishedLabel=安装完成!%n%n「[name]」已装到本机。支持绝区零 / 崩坏: 星穹铁道 / 鸣潮, 必须配合 XXMI Launcher 使用。%n%n请通过桌面快捷方式启动(会弹 UAC, 点【是】)。首次启动会自动检测 XXMI 安装目录, 无需手动配置。
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式(&D)"; GroupDescription: "附加任务:"; Flags: checkedonce
@@ -56,9 +57,13 @@ Source: "..\dist\Mod-Manager\*"; DestDir: "{app}"; Flags: ignoreversion recurses
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Comment: "XXMI 各游戏的模组管理器 - 浏览/切换/方案/仓库"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Comment: "XXMI 各游戏的模组管理器"
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; IconIndex: 0; Comment: "XXMI 各游戏的模组管理器 - 浏览/切换/方案/仓库"
+; v1.5.76: 桌面快捷方式去掉 Tasks 条件, 改成**每次安装都强制重建**。
+; 踩过的坑: 原来挂 Tasks: desktopicon + Flags: checkedonce —— 装过一次之后那个任务
+; 就不再勾选, 升级时跳过创建; 加上旧版安装器误删过「Mod 管家.lnk」, 结果用户桌面上
+; 什么都没有, 找不到程序。现在无条件创建, 并显式指定图标来源。
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; IconIndex: 0; Comment: "XXMI 各游戏的模组管理器"
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; IconIndex: 0; Tasks: quicklaunchicon
 
 [Run]
 ; 注意: exe 带管理员清单(requireAdministrator), 安装器普通权限下不能直接 CreateProcess 启动它

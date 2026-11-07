@@ -411,8 +411,11 @@ static_checks16 = [
     ("段头备注当变体中文名(sec_note)", 'sec_note = st[st.find("]") + 1:].strip()' in zsrc),
     ("备注优先于内置翻译表", "label_cn = sec_note or CYCLE_LABEL_CN" in zsrc),
     ("no_* 排除修饰符映射为 !X 显示", '("no_alt", "!Alt")' in zsrc),
-    ("过滤角色框禁掉 Edge 自动填充", 'id="charFilter"' in html and 'id="charFilter" placeholder="🔍 过滤角色…" autocomplete="off"' in html),
-    ("主搜索框禁掉 Edge 自动填充", '<input id="q" placeholder="搜索 mod / 角色 / 路径  (按 / 聚焦)" autocomplete="off"' in html),
+    ("过滤角色框禁掉 Edge 自动填充",
+     "charFilter" in html and "autocomplete=\"off\"" in html
+     and re.search(r'id="charFilter"[^>]*autocomplete="off"', html) is not None),
+    ("主搜索框禁掉 Edge 自动填充",
+     re.search(r'id="q"[^>]*autocomplete="off"', html) is not None),
 ]
 w()
 w("=== v1.5.28 静态检查 ===")
@@ -731,7 +734,8 @@ _scripts23 = {
 
 static_checks23 = [
     # 测试模式: 从源头杜绝"测试实例抢热键又没被回收变孤儿"
-    ("后端有 TEST_MODE 开关", 'TEST_MODE = os.environ.get("ZZMI_TEST_MODE") == "1"' in zsrc),
+    # v1.5.76: 环境变量改名 MOD_MANAGER_TEST_MODE, 仍兼容旧的 ZZMI_TEST_MODE
+    ("后端有 TEST_MODE 开关", "MOD_MANAGER_TEST_MODE" in zsrc and "ZZMI_TEST_MODE" in zsrc),
     ("TEST_MODE 不注册全局热键(dry-run)", "self.ok, self.ok_main, self.ok_photo = True, True, True" in zsrc),
     ("TEST_MODE 不装鼠标钩子", "不装鼠标钩子" in zsrc),
     ("main 里 TEST_MODE 跳过 hotkey.start", "测试模式跳过全局快捷键" in zsrc),
@@ -1030,11 +1034,13 @@ static_checks27 = [
      re.search(r"#multiHint\{[^}]*font-size:10\.5px", html) is not None),
     ("次要提示去掉字距(标题的 letter-spacing 不该继承给它)",
      re.search(r"#multiHint\{[^}]*letter-spacing:0", html) is not None),
-    ("只加约束, 没动 DOM 排列(标题行仍是 ftri + 角色 + chip + hint 三个 span)",
-     (lambda m: bool(m) and m.group(0).count("<span") == 3
+    # v1.5.77: 标题行改成 i18n 后「角色」被包进 <span data-i18n>,
+    # span 数量会变; 断言改成只看**关键元素都在**(结构约束, 不数节点)。
+    ("只加约束, 没动 DOM 排列(标题行含 ftri + 角色 + cChars + multiHint)",
+     (lambda m: bool(m)
       and 'class="ftri"' in m.group(0) and "角色" in m.group(0)
       and 'id="cChars"' in m.group(0) and 'id="multiHint"' in m.group(0))(
-         re.search(r'data-fold="chars">[\s\S]{0,300}?</div>', html))),
+         re.search(r'data-fold="chars">[\s\S]{0,400}?</div>', html))),
     # --- ② 背景浓度「恢复默认」 ---
     ("设置页有「恢复默认」按钮", 'id="btnBgOpReset"' in html
      and ">恢复默认</button>" in html),
@@ -1053,8 +1059,10 @@ static_checks27 = [
          re.search(r"function setBgOp\(v\)\{[\s\S]{0,500}?\n\}", html))
      and "function _syncBgOpReset()" in html),
     ("已是默认时按钮 disabled",
-     (lambda m: bool(m) and "disabled" in m.group(0))(
-         re.search(r'id="btnBgOpReset"[\s\S]{0,300}?>恢复默认', html))),
+     # v1.5.79: 按钮文案改走 i18n(t("set.reset")), 不再硬编码「恢复默认」——
+     # 断言改成「找到 id 后的 <button> 标签本身含 disabled 且带 onclick」
+     (lambda m: bool(m) and "disabled" in m.group(0) and "onclick" in m.group(0))(
+         re.search(r'id="btnBgOpReset"[\s\S]{0,400}?</button>', html))),
     ("置灰有对应样式(.mini:disabled)", re.search(
         r"\.btn:disabled,\.mini:disabled\{", html) is not None),
     # --- ③ 三套主题 token 不许被这轮改动波及 ---
