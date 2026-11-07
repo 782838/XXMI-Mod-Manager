@@ -473,9 +473,19 @@ assert Z.BurstBuffer.TIERS == (8, 16, 32, 64), Z.BurstBuffer.TIERS
 w("帧率 24fps + 档位 (8,16,32,64) OK")
 
 # 空缓冲触发要拒绝(而不是弹空挑帧条)
-bb2 = Z.BurstBuffer(_FakeApp())
-r2 = bb2.trigger()
-assert not r2["ok"], r2
+# v1.5.79: 这条原本直接用真实前台窗口判定 —— 只要本机正好有游戏(或别的
+# 能被 _game_exe_names 认作游戏的进程)在前台, trigger() 就会真去录 3 秒并返回 ok=True,
+# 断言随之因环境而失败(在开着游戏/浏览器时必失败)。
+# 这里把"是否允许录制"显式打桩为 False, 只验证"不允许时必须拒并给得出人话"。
+_old_allow = Z._burst_allowed_now
+try:
+    Z._burst_allowed_now = lambda cfg: False
+    bb2 = Z.BurstBuffer(_FakeApp())
+    r2 = bb2.trigger()
+    assert not r2["ok"], r2
+    assert r2.get("msg"), "拒绝时必须给出原因文案"
+finally:
+    Z._burst_allowed_now = _old_allow
 w("空缓冲触发被拒并给出指引 OK")
 # keep 落盘 + 路径安全闸
 _ph = os.path.join(HERE, "_photos")

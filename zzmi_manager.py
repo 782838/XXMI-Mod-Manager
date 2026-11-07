@@ -3858,8 +3858,36 @@ _VK_MAP = {
     "VK_OEM_CLEAR": "清除", "VK_PROCESSKEY": "IME处理键",
 }
 
+# v1.5.79: 上面的键名是中文习惯叫法; 界面切英文时用这张表覆盖
+# (没列出的键保持原样 —— A~Z / 0~9 / F1~F24 / Home 这类本来就是英文)
+_VK_MAP_EN = {
+    "VK_ACCEPT": "Accept", "VK_APPS": "Menu", "VK_BACK": "Backspace",
+    "VK_CAPITAL": "Caps Lock", "VK_CLEAR": "Clear", "VK_CONVERT": "Convert",
+    "VK_ENTER": "Enter", "VK_EXECUTE": "Execute", "VK_FINAL": "Final",
+    "VK_HANGUL": "Hangul", "VK_HANJA": "Hanja", "VK_HELP": "Help",
+    "VK_JUNJA": "Junja", "VK_KANA": "Kana", "VK_KANJI": "Kanji",
+    "VK_LAUNCH_APP1": "App 1", "VK_LAUNCH_APP2": "App 2", "VK_LAUNCH_MAIL": "Mail",
+    "VK_LAUNCH_MEDIA_SELECT": "Media Select", "VK_LBUTTON": "Left Mouse", "VK_MBUTTON": "Middle Mouse",
+    "VK_MEDIA_NEXT_TRACK": "Next Track", "VK_MEDIA_PLAY_PAUSE": "Play/Pause", "VK_MEDIA_PREV_TRACK": "Prev Track",
+    "VK_MEDIA_STOP": "Stop", "VK_MODECHANGE": "Mode Change", "VK_NONCONVERT": "No Convert",
+    "VK_OEM_CLEAR": "Clear", "VK_PAUSE": "Pause", "VK_PLAY": "Play",
+    "VK_PRINT": "Print", "VK_PROCESSKEY": "IME Process", "VK_RBUTTON": "Right Mouse",
+    "VK_RETURN": "Enter", "VK_SELECT": "Select", "VK_SLEEP": "Sleep",
+    "VK_SNAPSHOT": "Print Screen", "VK_SPACE": "Space", "VK_XBUTTON1": "Mouse Side 1",
+    "VK_XBUTTON2": "Mouse Side 2", "VK_ZOOM": "Zoom",
+}
 
-def _pretty_keys(keyval):
+
+
+def _is_en(cfg):
+    """界面当前是不是英文。后端生成的展示文案(键名 / 目录标签)要跟着走。"""
+    try:
+        return str((cfg or {}).get("lang") or "zh") == "en"
+    except Exception:
+        return False
+
+
+def _pretty_keys(keyval, en=False):
     """3DMigoto 的 key 行: 空格分隔 = 同时按下的组合键。
     'ctrl alt y 6' -> ['Ctrl+Alt+Y+6'], 'no_ctrl h' -> ['H(无Ctrl)'],
     'h' -> ['H'], 'VK_CAPITAL' -> ['大写锁定'], 'VK_RBUTTON' -> ['鼠标右键']。
@@ -3893,7 +3921,7 @@ def _pretty_keys(keyval):
     for t in tokens:
         # 引号包裹的空格 -> 空格键
         if t == ' ':
-            parts.append("空格")
+            parts.append("Space" if en else "空格")
             continue
         tl = t.lower()
         hit = False
@@ -3910,22 +3938,22 @@ def _pretty_keys(keyval):
             continue
         # VK_ 虚拟键码 -> 中文键名
         if tl.startswith("vk_"):
-            parts.append(_VK_MAP.get(tl.upper(), t))
+            parts.append((_VK_MAP_EN if en else _VK_MAP).get(tl.upper(), t))
             continue
         # 0x41 这种十六进制原始键码
         if re.match(r"^0x[0-9a-f]+$", tl):
-            parts.append("按键 " + t)
+            parts.append(("Key " if en else "按键 ") + t)
             continue
         parts.append(t if len(t) > 1 else t.upper())
     if not parts:
         return []
     result = "+".join(parts)
     if neg_parts:
-        result += "(无" + "+".join(neg_parts) + ")"
+        result += ("(no " if en else "(无") + "+".join(neg_parts) + ")"
     return [result]
 
 
-def parse_cycle_vars(abs_root):
+def parse_cycle_vars(abs_root, en=False):
     """扫描 mod 内已启用 ini 的 [Key*] 段, 汇总每个循环变量的
     取值列表 / 绑定按键 / 当前值 / 可否从外部切换。"""
     found = {}
@@ -3964,7 +3992,7 @@ def parse_cycle_vars(abs_root):
                         "switchable": True})
                     if sec_note and not rec.get("label_cn"):
                         rec["label_cn"] = sec_note
-                    for k in _pretty_keys(sec_key):
+                    for k in _pretty_keys(sec_key, en):
                         if k not in rec["keys"]:
                             rec["keys"].append(k)
                     if (sec_key or "").strip() and \
@@ -4209,7 +4237,7 @@ def parse_key_input(s):
     return " ".join(out), None
 
 
-def do_cycle_rekey(abs_root, var, key_input):
+def do_cycle_rekey(abs_root, var, key_input, en=False):
     """把循环变量 var 的绑定按键改成玩家输入的新键。
     找 mod 内已启用 ini 中 [Key*] 且 type = cycle 且声明了 $var 的段,
     段内所有 key = 行的键值部分就地替换。字节级 + 备份 + journal 可撤销。"""
@@ -4217,7 +4245,8 @@ def do_cycle_rekey(abs_root, var, key_input):
     new_raw, err = parse_key_input(key_input)
     if err:
         return False, err
-    new_disp = "、".join(_pretty_keys(new_raw)) or new_raw
+    new_disp = ("\u3001".join(_pretty_keys(new_raw, en)) or new_raw) if not en \
+        else (" / ".join(_pretty_keys(new_raw, en)) or new_raw)
     edits = []   # (path, abs_start, abs_end, newbytes, oldraw)
     for cur, dirs, files in os.walk(abs_root):
         dirs[:] = [d for d in dirs if d.lower() != "desktop.ini"]
@@ -4289,7 +4318,8 @@ def do_cycle_rekey(abs_root, var, key_input):
     byfile = {}
     for p, s, e, nb, old in edits:
         byfile.setdefault(p, []).append((s, e, nb))
-    old_disp = "、".join(_pretty_keys(edits[0][4])) or edits[0][4]
+    old_disp = ("\u3001".join(_pretty_keys(edits[0][4], en)) or edits[0][4]) if not en \
+        else (" / ".join(_pretty_keys(edits[0][4], en)) or edits[0][4])
 
     changed = 0
     for p, items in byfile.items():
@@ -8418,7 +8448,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"ok": False,
                                        "msg": "散落在 Mods 根目录的 ini 暂不支持改键"})
                 ok, msg = do_cycle_rekey(root, body.get("var") or "",
-                                         body.get("key") or "")
+                                         body.get("key") or "",
+                                         _is_en(self.app.cfg))
                 return self._json({"ok": ok, "msg": msg})
 
             if act == "add_lib":
@@ -8981,7 +9012,7 @@ class Handler(BaseHTTPRequestHandler):
         v1.5.79: 标签跟着界面语言走。以前这里写死中文, 用户切到 English 后
         目录选择器顶部那排快捷按钮还是中文。
         """
-        en = str(self.app.cfg.get("lang") or "zh") == "en"
+        en = _is_en(self.app.cfg)
         out = []
         try:
             root = self.app.cfg.get("xxmi_root") or ""
@@ -9152,7 +9183,7 @@ class Handler(BaseHTTPRequestHandler):
                 "inis": sorted(inis, key=lambda i: i["rel"].lower()),
                 "components": comp.get("components", []),
                 "groups": comp.get("groups", []),
-                "cycles": parse_cycle_vars(abs_root)
+                "cycles": parse_cycle_vars(abs_root, _is_en(self.app.cfg))
                 if os.path.isdir(abs_root) else []}
 
     def library_list(self):
