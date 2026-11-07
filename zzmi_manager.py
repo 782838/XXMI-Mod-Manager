@@ -8976,12 +8976,18 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": "internal"}, 500)
 
     def _quick_folders(self):
-        """「自定义文件夹」里的快捷入口: XXMI 根目录 / Mods / 桌面 / 文档 / 下载。"""
+        """「自定义文件夹」里的快捷入口: XXMI 根目录 / Mods / 桌面 / 文档 / 下载。
+
+        v1.5.79: 标签跟着界面语言走。以前这里写死中文, 用户切到 English 后
+        目录选择器顶部那排快捷按钮还是中文。
+        """
+        en = str(self.app.cfg.get("lang") or "zh") == "en"
         out = []
         try:
             root = self.app.cfg.get("xxmi_root") or ""
             if root and os.path.isdir(root):
-                out.append({"label": "XXMI 根目录", "path": root})
+                out.append({"label": "XXMI root" if en else "XXMI 根目录",
+                            "path": root})
             md = self.app.mods_dir()
             if md and os.path.isdir(md) and os.path.abspath(md) != \
                     os.path.abspath(root or " "):
@@ -8989,11 +8995,11 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             pass
         home = os.path.expanduser("~")
-        for label, sub in (("桌面", "Desktop"), ("文档", "Documents"),
-                           ("下载", "Downloads")):
-            for cand in (os.path.join(home, sub), os.path.join(home, label)):
+        cn = {"Desktop": "桌面", "Documents": "文档", "Downloads": "下载"}
+        for sub in ("Desktop", "Documents", "Downloads"):
+            for cand in (os.path.join(home, sub), os.path.join(home, cn[sub])):
                 if os.path.isdir(cand):
-                    out.append({"label": label, "path": cand})
+                    out.append({"label": sub if en else cn[sub], "path": cand})
                     break
         return out
 

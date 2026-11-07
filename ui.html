@@ -2398,6 +2398,7 @@ const LANG_PACK = {
     "empty.filterTitle": "没有符合条件的 mod",
     "empty.filterHint": "换个关键词试试, 或者把筛选条件放宽一点。",
     "empty.clear": "清空筛选",
+    "dp.okDefault": "✔ 就搬到这里",
   },
   
   en: {
@@ -3082,6 +3083,7 @@ const LANG_PACK = {
     "empty.filterTitle": "No matching mods",
     "empty.filterHint": "Try another keyword, or loosen the filters.",
     "empty.clear": "Clear filters",
+    "dp.okDefault": "✔ Use this folder",
   },
   
 };
@@ -3765,7 +3767,7 @@ function openDirPick(opt){
   if (!box) return;
   dpOpt = opt || null;
   box.querySelector(".dphd b").textContent = (dpOpt && dpOpt.title) || t("dp.titleShort");
-  $("#dpOk").textContent = (dpOpt && dpOpt.ok) || "✔ 就搬到这里";
+  $("#dpOk").textContent = (dpOpt && dpOpt.ok) || t("dp.okDefault");
   box.classList.add("on");
   $("#dpClose").onclick = closeDirPick;
   $("#dpCancel").onclick = closeDirPick;
