@@ -5,6 +5,13 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.76 更新
+-----------
+* **改: 程序图标换成露西**(用户提供)。裁成正方形 + 圆角, 9 档尺寸齐全。
+  exe / 桌面快捷方式 / 任务栏 / 安装包 / 网页 favicon 全用这一个。
+  界面左上角那个 34px 小 logo **不受影响** —— 它仍然显示当前游戏的方图
+  (切绝区零显示绝区零, 切鸣潮显示鸣潮, 以后接星铁同理)。
+
 v1.5.75 更新
 -----------
 * **修: 开着鸣潮时顶上写「绝区零正在运行」** —— 那条横幅的文案写死了绝区零,
@@ -960,7 +967,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.75"
+VERSION = "1.5.76"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -1106,7 +1113,9 @@ def _res_dir():
 
 UI_PATH = os.path.join(_res_dir(), "ui.html")
 BG_PATH = os.path.join(_res_dir(), "bg.jpg")
-# v1.5.71 「绝区零 + 鸣潮」各占一半的合成图标: 打包后在资源根, 源码运行时在 installer/ 下
+# v1.5.76 程序图标换成露西(用户提供): 打包后在资源根, 源码运行时在 installer/ 下。
+# 注意: 这里只影响 exe/窗口/任务栏/安装包; 界面左上角那个 34px 小 logo 走 GAME_ICON_FILES,
+# 仍然是「当前游戏的方图」。
 ICON_PATH = os.path.join(_res_dir(), "app.ico")
 if not os.path.isfile(ICON_PATH):
     ICON_PATH = os.path.join(_res_dir(), "installer", "app.ico")
