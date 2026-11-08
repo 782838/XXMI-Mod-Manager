@@ -87,7 +87,7 @@ coll = COLLECT(
 # 仍然可能产出"没有 PIL 的包"。这里在 COLLECT 之后直接查产物目录, 缺了就报错。
 # ===========================================================================
 import os as _os
-# v1.5.79: 产物目录早改成 Mod-Manager 了, 这里原来还写着旧名 ZZMI-Mod-Manager,
+# v1.5.76: 产物目录早改成 Mod-Manager 了, 这里原来还写着旧名 ZZMI-Mod-Manager,
 # 结果自检永远找不到 PIL 而误报中止。改成跟 EXE/COLLECT 的 name 一致。
 _pil_pkg = _os.path.join(DISTPATH, 'Mod-Manager', '_internal', 'PIL')
 if not _os.path.isdir(_pil_pkg):

@@ -5,7 +5,7 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
-v1.5.79 更新
+v1.5.76 更新
 -----------
 * **修: 设置里选了 English, 界面仍然大片中文** —— 这次是彻底排查,
   共四个根因(前三个都是"代码对但不生效", `node --check` 也查不出来):
@@ -1012,11 +1012,13 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.79"
+VERSION = "1.5.76"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
-UPDATE_REPO = "782838/ZZMI-Mod-Manager"
+# v1.5.76: GitHub 仓库改名为 XXMI-Mod-Manager(不绑具体游戏, 以后再加游戏不用再改)。
+# 旧地址 GitHub 会自动重定向, 已发的 Release 链接不会失效。
+UPDATE_REPO = "782838/XXMI-Mod-Manager"
 
 DISABLED_PREFIX = "DISABLED_"
 DISABLED_TEST = re.compile(r"^(?:disabled|禁用)", re.IGNORECASE)
@@ -3858,7 +3860,7 @@ _VK_MAP = {
     "VK_OEM_CLEAR": "清除", "VK_PROCESSKEY": "IME处理键",
 }
 
-# v1.5.79: 上面的键名是中文习惯叫法; 界面切英文时用这张表覆盖
+# v1.5.76: 上面的键名是中文习惯叫法; 界面切英文时用这张表覆盖
 # (没列出的键保持原样 —— A~Z / 0~9 / F1~F24 / Home 这类本来就是英文)
 _VK_MAP_EN = {
     "VK_ACCEPT": "Accept", "VK_APPS": "Menu", "VK_BACK": "Backspace",
@@ -9009,7 +9011,7 @@ class Handler(BaseHTTPRequestHandler):
     def _quick_folders(self):
         """「自定义文件夹」里的快捷入口: XXMI 根目录 / Mods / 桌面 / 文档 / 下载。
 
-        v1.5.79: 标签跟着界面语言走。以前这里写死中文, 用户切到 English 后
+        v1.5.76: 标签跟着界面语言走。以前这里写死中文, 用户切到 English 后
         目录选择器顶部那排快捷按钮还是中文。
         """
         en = _is_en(self.app.cfg)

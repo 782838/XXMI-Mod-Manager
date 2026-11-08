@@ -42,6 +42,24 @@ The terms of service of all three games **do not allow modding**; using mods may
 Provided for personal learning and research only; commercial use and repackaged distribution
 are prohibited. Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
+## Language
+
+The UI is **fully bilingual** — switch between Simplified Chinese and English in
+**Settings → Interface language**. The choice is saved to the config file, so it survives
+restarts and port changes.
+
+What this covers (as of v1.5.76 the whole interface, not just the chrome):
+
+- every button, label, menu, tooltip, placeholder and dialog
+- the detail drawer, repository manager, settings panel, conflict list
+- burst picker, photo wall, download area, error page
+- toast messages and confirmation prompts
+- human-readable key names (`Caps Lock`, `no Shift`) and folder shortcuts
+  (`Desktop` / `Documents` / `Downloads`)
+
+**Not translated on purpose:** your own data — mod names, character names and filesystem
+paths stay exactly as they are on disk.
+
 ## Features
 
 - **Three games, one window** — a dropdown flips between *Zenless Zone Zero*,
@@ -151,6 +169,23 @@ Tests run against sandbox folders only (never your real mods):
 三款游戏的用户协议**均不支持使用模组**，使用模组存在**账号封禁风险**，
 **一切后果由使用者本人自行承担**。仅用于个人技术学习研究，禁止商用与分发整合包。
 完整声明见 [DISCLAIMER.md](DISCLAIMER.md)。
+
+## 界面语言
+
+界面完全双语 —— 在 **设置 → 界面语言** 里切换简体中文 / English。
+选择会存进配置文件, 重启、换端口都不会丢。
+
+v1.5.76 起覆盖的范围(以前只翻了一部分):
+
+- 所有按钮、标签、菜单、悬浮提示、输入框占位符、弹窗
+- 详情抽屉、仓库管理、设置面板、冲突列表
+- 连拍挑帧、照片墙、下载区、错误页
+- 所有 toast 提示与确认弹窗
+- 按键的可读名称(「Caps Lock」「no Shift」)与目录快捷标签
+  (「Desktop」「Documents」「Downloads」)
+
+**故意不翻的**: 你自己的数据 —— mod 名、角色名、磁盘路径,
+磁盘上叫什么就显示什么。
 
 ## 功能
 

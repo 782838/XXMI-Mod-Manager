@@ -4983,7 +4983,7 @@ function applyI18n(root){
     const k = el.getAttribute("data-i18n");
     if (k) el.textContent = t(k);
   });
-  // v1.5.79: 文案里带 <code>/<b>/<br> 的段落走这里 —— textContent 会把标签吃掉,
+  // v1.5.76: 文案里带 <code>/<b>/<br> 的段落走这里 —— textContent 会把标签吃掉,
   // 那些段落的排版(代码片段、加粗、换行)全靠 HTML, 必须用 innerHTML 写回。
   sc.querySelectorAll("[data-i18n-html]").forEach(el => {
     const k = el.getAttribute("data-i18n-html");
