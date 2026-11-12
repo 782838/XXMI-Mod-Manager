@@ -3089,6 +3089,15 @@ const LANG_PACK = {
 };
 let LANG = "zh";
 function t(key){
+  // v1.5.76 防呆: 调用方若把非字符串(对象/数组/undefined)传进来, 多半是
+  // `xxx.map(t => ...)` 之类把形参命名成 t, 遮蔽了这个函数 → 会抛
+  // "t is not a function" 让整个渲染函数中断, 界面永远卡在"加载中"。
+  // 这里显式报错指明位置, 免得又靠肉眼排查。
+  if (typeof key !== "string"){
+    console.error("[i18n] t() 收到的 key 不是字符串:", key,
+                  "—— 检查是否有形参叫 t 遮蔽了翻译函数");
+    return String(key);
+  }
   const pk = LANG_PACK[LANG] || LANG_PACK.zh;
   let v = pk[key];
   if (v === undefined) v = LANG_PACK.zh[key];
@@ -5045,9 +5054,9 @@ async function openLib(){
         <option value="__find__">${esc(t("lib.findRepoOpt"))}</option>
       </select>
     </div>
-    <div class="tree">${tops.map(t=>`<div class="trow">
-        <span class="nm">${esc(t.name)}${t.disabled?" <span class='hint'>"+esc(t("lib.disabledMark"))+"</span>":""}</span>
-        <button class="mini" data-out="${esc(t.name)}">${esc(t("lib.moveOut"))}</button></div>`).join("")
+    <div class="tree">${tops.map(top=>`<div class="trow">
+        <span class="nm">${esc(top.name)}${top.disabled?" <span class='hint'>"+esc(t("lib.disabledMark"))+"</span>":""}</span>
+        <button class="mini" data-out="${esc(top.name)}">${esc(t("lib.moveOut"))}</button></div>`).join("")
       || '<div class="trow"><span class="nm">' + esc(t("lib.emptyRow")) + '</span></div>'}</div>
     ${libs.map(L => `
       <h4 style="margin:18px 0 6px;font-size:13px">🗄 ${esc(L.name)}
