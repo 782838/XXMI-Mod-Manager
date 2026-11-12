@@ -1890,6 +1890,33 @@ CHAR_NPC_WORDS = {"npc", "noname", "no name", "no_name", "name", "无名", "无�
                   "占位", "占位符", "placeholder", "undefined", "null"}
 CHAR_GENERIC_HEAD = {"功能", "工具", "修复", "整合", "其他", "杂项", "未分类",
                      "ui", "uid", "mod", "测试"}
+# 分类文件夹层面的「功能类」词: 命中说明这一层装的是功能/工具 mod, 不是角色。
+# 刻意不含 mod / 模组 / ui / uid / 菜单 / 界面 —— 「1aMOD」这种是所有 mod 的容器,
+# 拿它当角色名会把整个分类压成一行。
+PARENT_TOOL_WORDS = {
+    "功能": "功能", "工具": "工具", "修复": "修复", "补丁": "补丁",
+    "整合": "整合", "整合包": "整合", "其他": "其他", "其它": "其他",
+    "杂项": "杂项", "未分类": "未分类", "测试": "测试",
+}
+
+
+def _parent_tool_word(dirs):
+    """看 mod 的上级分类目录, 命中「功能类」词就返回规范化名, 都不命中返回 None。
+
+    v1.5.76 修: 以前只看 mod 自己的名字(路径最后一段), 完全不看它挂在哪个分类下,
+    于是「功能/隐藏uid」被当成一个叫「隐藏」的角色(叶子名的 uid 被当后缀砍掉了),
+    而绝区零的「1a功能/功能-隐藏UI」因为名字里带「功能-」前缀才归进「功能」。
+    现在两级都看: 叶子名先推断, 推断结果若来自功能类目录则改用目录名。
+
+    用户习惯用「1a」当排序前缀(1a功能 / 1aMOD / 1a工具), 所以剥掉前缀再比。
+    """
+    for d in reversed(list(dirs or [])):
+        s = strip_disabled(d or "").strip().strip(STRIP_CHARS).lower()
+        if s.startswith("1a"):
+            s = s[2:].strip(STRIP_CHARS)
+        if s in PARENT_TOOL_WORDS:
+            return PARENT_TOOL_WORDS[s]
+    return None
 CHAR_WORDS = [
     "微型比基尼", "微比基尼", "吊带比基尼", "条形比基尼", "奶牛比基尼", "比基尼",
     "反兔女郎", "兔女郎", "泳装", "泳衣", "奶牛", "皮肤", "常服丰满", "常服",
@@ -2960,6 +2987,13 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
             cid = ROOT_MOD_ID
             cat = "(根目录)"
         char_auto = auto_char(name)
+        # v1.5.76 修「隐藏」被当成角色: mod 自己的名字推断不出角色时, 再看它挂在哪个
+        # 分类文件夹下。「功能/隐藏uid」的叶子名会被推断成「隐藏」(像个角色名), 但它
+        # 属于功能类, 应该和绝区零「1a功能/功能-隐藏UI」一样归到「功能」。
+        if len(parts) > 1:
+            _pw = _parent_tool_word(parts[:-1])
+            if _pw:
+                char_auto = _pw
         char = (char_overrides.get(cid) or char_overrides.get(norm_rel(info["rel"]))
                 or char_auto)
         # 用户手动指定过封面(切换预览图 / 一键添加预览图)就优先用它, 失效则回退自动挑
@@ -7935,35 +7969,69 @@ GB_CHAR_CN = {
 }
 
 # ---------------------------------------------------------------------------
-# v1.5.76: 星穹铁道 / 鸣潮 角色名对照（英文转写 -> 中文）。
+# v1.5.76: 星穹铁道 / 鸣潮 角色名对照（英文转写 -> 官方中文名）。
 # 只用于「下载区」把 GameBanana 上的英文 mod 名译成中文; 表里没有的会走机翻兜底,
 # 所以这张表不全也不影响使用, 只是译名可能更机械。
-# 数据来源: 游戏内官方中文名 (按社区常用的英文转写整理)。
+#
+# 数据来源: 崩坏：星穹铁道 bwiki 图鉴 Category:角色 全 102 个角色页的
+# `名称` / `外文名` 字段逐条抓取核对（2026-11 抓取）。
+# 注意: 旧版 (v1.5.76) 这张表是手工凭印象填的, 大量条目是音译硬凑,
+# 例如 hysilens 写成「希茜莲」(正确: 海瑟音)、cyrene 写成「赛琳」(正确: 昔涟)、
+# fugue 写成「缇宝」(正确: 忘归人)、tribbie 写成「崔比」(正确: 缇宝)、
+# jiaoqiu 写成「交丘」(正确: 椒丘)、cerydra 写成「瑟希拉」(正确: 刻律德菈)。
+# 本次按官方图鉴整表重写, 后续新增角色请照 bwiki 外文名字段填。
 # ---------------------------------------------------------------------------
 SR_CHAR_CN = {
-    # --- 星穹铁道 ---
-    "trailblazer": "开拓者", "march 7th": "三月七", "dan heng": "丹恒",
-    "himeko": "姬子", "welt": "瓦尔特", "kafka": "卡芙卡",
-    "silver wolf": "银狼", "blade": "刃", "jing yuan": "景元",
+    # --- 崩坏：星穹铁道 ---
+    # 星穹列车 / 开拓者系
+    "trailblazer": "开拓者", "stelle": "星", "caelus": "穹",
+    "march 7th": "三月七", "dan heng": "丹恒",
+    "dan heng imbibitor lunae": "丹恒•饮月",
+    "dan heng permansor terrae": "丹恒•腾荒",
+    "himeko": "姬子", "himeko nova": "姬子•启行", "welt": "瓦尔特",
+    "pom-pom": "帕姆",
+    # 雅利洛-VI
     "bronya": "布洛妮娅", "seele": "希儿", "serval": "希露瓦",
     "gepard": "杰帕德", "pela": "佩拉", "clara": "克拉拉",
     "sampo": "桑博", "hook": "虎克", "natasha": "娜塔莎",
-    "asta": "艾丝妲", "herta": "黑塔", "armin": "阿兰",
+    "luka": "卢卡", "lynx": "玲可",
+    # 空间站「黑塔」/ 仙舟「罗浮」
+    "asta": "艾丝妲", "herta": "黑塔", "the herta": "大黑塔",
+    "arlan": "阿兰", "armin": "阿兰",
     "tingyun": "停云", "bailu": "白露", "qingque": "青雀",
     "sushang": "素裳", "yanqing": "彦卿", "fu xuan": "符玄",
     "jingliu": "镜流", "luocha": "罗刹", "yukong": "驭空",
-    "lynx": "玲可", "luka": "卢卡", "topaz": "托帕",
-    "guinaifen": "桂乃芬", "hanya": "寒鸦", "xueyi": "雪衣",
-    "ruan mei": "阮·梅", "dr. ratio": "阮·梅博士" , "ratio": "真理医生",
-    "black swan": "黑天鹅", "sparkle": "花火", "misha": "米沙",
-    "gallagher": "加拉赫", "aventurine": "砂金", "robin": "知更鸟",
+    "jing yuan": "景元", "hanya": "寒鸦", "xueyi": "雪衣",
+    "guinaifen": "桂乃芬", "jiaoqiu": "椒丘", "feixiao": "飞霄",
+    "lingsha": "灵砂", "moze": "貊泽", "yunli": "云璃",
+    "huohuo": "藿藿",
+    # 公司 / 匹诺康尼
+    "kafka": "卡芙卡", "silver wolf": "银狼", "blade": "刃",
+    "silver wolf lv.999": "银狼LV.999",
+    "ruan mei": "阮•梅", "dr. ratio": "真理医生", "dr.ratio": "真理医生",
+    "ratio": "真理医生",
+    "black swan": "黑天鹅", "sparkle": "花火", "sparxie": "火花",
+    "misha": "米沙", "gallagher": "加拉赫", "aventurine": "砂金",
+    "robin": "知更鸟", "robin summeretto": "知更鸟•晴歌",
     "boothill": "波提欧", "firefly": "流萤", "jade": "翡翠",
-    "yunli": "云璃", "jiaoqiu": "交丘", "feixiao": "飞霄",
-    "lingsha": "灵砂", "moze": "貊泽", "rappa": "乱破",
-    "sunday": "星期日", "fugue": "缇宝", "tribbie": "崔比",
-    "aglaea": "阿格莱雅", "mydei": "迈德伊", "castorice": "卡斯特丽丝",
-    "anaxa": "阿纳克萨", "hyacine": "海瑟音", "cerydra": "瑟希拉",
-    "hysilens": "希茜莲", "phainon": "白厄", "cyrene": "赛琳",
+    "rappa": "乱破", "sunday": "星期日",
+    "fugue": "忘归人", "tribbie": "缇宝",
+    "topaz": "托帕", "topaz and numby": "托帕&账账",
+    "argenti": "银枝",
+    # 翁法罗斯 / 3.x 版本
+    "aglaea": "阿格莱雅", "mydei": "万敌", "castorice": "遐蝶",
+    "anaxa": "那刻夏", "hyacine": "风堇", "cerydra": "刻律德菈",
+    "hysilens": "海瑟音", "phainon": "白厄", "cyrene": "昔涟",
+    "cipher": "赛飞儿", "evernight": "长夜月", "yao guang": "爻光",
+    "yaoguang": "爻光", "evanescia": "绯英", "ashveil": "不死途",
+    "pearl": "真珠", "the dahlia": "大丽花", "dahlia": "大丽花",
+    "mortenax blade": "千冶•刃", "garmentmaker": "衣匠",
+    "obsidian": "龙晶", "opal": "欧泊", "sugilite": "舒俱",
+    "saber": "Saber", "archer": "Archer", "gilgamesh": "吉尔伽美什",
+    "rin tohsaka": "远坂凛", "rin": "远坂凛",
+    "aeon aha": "阿哈",
+    # 其他
+    "acheron": "黄泉", "aventurine waveflair": "砂金•戏浪",
     # --- 鸣潮 ---
     "rover": "漂泊者", "yangyang": "秧秧", "chixia": "炽霞",
     "baizhi": "白芷", "sanhua": "散华", "danjin": "丹瑾",
