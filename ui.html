@@ -796,6 +796,13 @@ html[data-theme="light"] .sidecnt{background:rgba(20,30,50,.055)}
 .lightbox.dragging img{cursor:grabbing;transition:none}
 /* 放大后图会盖住说明文字 -> 直接淡出, 关掉再回来 */
 .lightbox.zoomed .lbcap{opacity:0}
+/* v1.5.81: 大图的加载/失败状态层（居中，压在图片上方） */
+.lbstate{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;
+  display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.86);
+  background:rgba(12,12,16,.72);border:1px solid rgba(255,255,255,.14);border-radius:14px;
+  padding:14px 20px;backdrop-filter:blur(12px);pointer-events:none;max-width:80vw}
+.lbstate .btn{pointer-events:auto}
+.lbstate.err{border-color:rgba(248,113,113,.5);color:#ffd7d7}
 .lbcap{user-select:none;position:relative;z-index:3;transition:opacity .18s var(--ease)}
 .lbhint{position:fixed;left:50%;top:14px;transform:translateX(-50%);font-size:11.5px;
   color:rgba(255,255,255,.66);background:rgba(12,12,16,.55);border:1px solid rgba(255,255,255,.12);
@@ -1066,6 +1073,15 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
      Esc 只退出放大, 不再连坐关掉底下的挑帧页/照片墙 -->
 <div class="lightbox" id="lightbox">
   <img id="lbImg" alt="">
+  <!-- v1.5.81: 大图加载/失败的状态层。
+       以前 <img> 直接赋 src 就完事, 几 MB 的原图在解码期间灯箱里**一片空白**,
+       用户以为"点了没反应/打不开", 只能去详情页换一张图再放大。
+       现在: 加载中显示转圈, 失败显示原因 + 重试按钮, 加载完再自适应尺寸。 -->
+  <div class="lbstate" id="lbState" style="display:none">
+    <span class="spin" id="lbSpin"></span>
+    <span id="lbStateTxt"></span>
+    <button class="btn" id="lbRetry" style="display:none" data-i18n="c.retry">重试</button>
+  </div>
   <div class="lbhint" id="lbHint" data-i18n="lb.hint">滚轮缩放 · 按住拖动平移 · 双击复位 · Esc 退出放大</div>
   <div class="lbcap" id="lbCap"></div>
   <div class="lbzbar" id="lbBar">
@@ -2404,8 +2420,11 @@ const LANG_PACK = {
     "empty.filterHint": "换个关键词试试, 或者把筛选条件放宽一点。",
     "empty.clear": "清空筛选",
     "dp.okDefault": "✔ 就搬到这里",
+    "lb.loading": "正在加载大图…",
+    "lb.loadFail": "这张图加载不出来（可能太大或已被移动），可以点重试，或去详情页换一张",
   },
   
+
   en: {
     "header.brand": "Mod Manager",
     "header.launch": "▶ Launch Game",
@@ -3090,8 +3109,11 @@ const LANG_PACK = {
     "empty.filterHint": "Try another keyword, or loosen the filters.",
     "empty.clear": "Clear filters",
     "dp.okDefault": "✔ Use this folder",
+    "lb.loading": "Loading full-size image…",
+    "lb.loadFail": "This image failed to load (too large or moved). Try Retry, or pick another one in Details.",
   },
   
+
 };
 let LANG = "zh";
 function t(key){
@@ -3651,9 +3673,55 @@ function lbNatural(){
 function zoomFull(src, caption){
   if (!src) return;
   lbReset();                       // 每次开新图都回到「适应窗口」
-  $("#lbImg").src = src;
   $("#lbCap").textContent = caption || "";
   $("#lightbox").classList.add("on");
+  lbLoad(src);
+}
+
+// v1.5.81: 统一走这里设大图 —— 带加载中/失败/重试。
+// 以前 zoomFull 直接 `img.src = src` 就结束: 几 MB 的原图解码期间灯箱**全白**,
+// 用户以为"点了没反应", 只能进详情换一张再放大。现在:
+//   · 立刻显示「正在加载…」+ 转圈
+//   · 出错显示原因(413 太大 / 404 找不到 / 415 不是图片)和「重试」
+//   · onload 之后才做自适应(此时 naturalWidth 才是真值)
+let _lbSrc = "", _lbTries = 0;
+function lbLoad(src){
+  const im = $("#lbImg"), st = $("#lbState"), tx = $("#lbStateTxt"),
+        sp = $("#lbSpin"), rt = $("#lbRetry");
+  if (!im || !st) { if (im) im.src = src; return; }
+  _lbSrc = src;
+  if (_lbTries > 0) { /* 重试时保留计数 */ } else { _lbTries = 0; }
+  // 先清掉上一张, 免得显示残图
+  im.style.visibility = "hidden";
+  im.removeAttribute("src");
+  st.style.display = "flex";
+  st.classList.remove("err");
+  if (sp) sp.style.display = "";
+  if (rt) rt.style.display = "none";
+  if (tx) tx.textContent = t("lb.loading");
+  im.onload = () => {
+    st.style.display = "none";
+    im.style.visibility = "";
+    _lbTries = 0;
+    lbReset();          // 加载完再按真实尺寸复位
+  };
+  im.onerror = () => {
+    im.style.visibility = "hidden";
+    st.classList.add("err");
+    if (sp) sp.style.display = "none";
+    if (rt) rt.style.display = "";
+    if (tx) tx.textContent = t("lb.loadFail");
+  };
+  im.src = src;
+}
+function lbRetryNow(){
+  if (!_lbSrc) return;
+  _lbTries++;
+  const st = $("#lbState");
+  if (st) st.style.display = "none";
+  // 加个时间戳破缓存: 有些失败是半截缓存导致的
+  const sep = _lbSrc.indexOf("?") >= 0 ? "&" : "?";
+  lbLoad(_lbSrc + sep + "_r=" + _lbTries);
 }
 function zoomImage(rel, caption){
   if (!rel) return;
@@ -3668,9 +3736,14 @@ function closeZoom(){
   LB = { z: 1, tx: 0, ty: 0 }; _lbDrag = null;
   const im = $("#lbImg"); if (im) im.style.transform = "";
   const pct = $("#lbPct"); if (pct) pct.textContent = "100%";
+  // v1.5.81: 收掉加载/失败状态层, 免得下次打开残留「加载中」或旧的报错
+  const st = $("#lbState"); if (st) st.style.display = "none";
+  _lbSrc = ""; _lbTries = 0;
   return true;
 }
 $("#lightbox").onclick = e => { if (e.target === e.currentTarget) closeZoom(); };
+// v1.5.81: 大图加载失败后的重试
+if ($("#lbRetry")) $("#lbRetry").onclick = ev => { ev.stopPropagation(); lbRetryNow(); };
 // --- 滚轮缩放 ---
 $("#lightbox").addEventListener("wheel", e => {
   if (!$("#lightbox").classList.contains("on")) return;
@@ -5609,9 +5682,11 @@ function human(n){
 }
 function gbZoom(u, caption){
   if (!u) return;
-  $("#lbImg").src = gbImg(u);
+  // v1.5.81: 走统一的 lbLoad —— 下载区的图也可能是几 MB, 一样要有加载/失败提示
+  lbReset();
   $("#lbCap").textContent = caption || "";
   $("#lightbox").classList.add("on");
+  lbLoad(gbImg(u));
 }
 async function gbTranslateNames(){
   if (!gbS.showTr || gbS.trLoaded || gbS.mode === "mod"){ gbApplyTr(); return; }

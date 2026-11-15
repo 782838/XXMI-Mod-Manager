@@ -5,6 +5,29 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.81 更新
+-----------
+* **修: 点缩略图放大「有时候加载不出来, 得进详情换张图才行」** —— 用户实测。
+  后端实测没问题(41 个有图的 mod, `full=1` 全部 200), 问题在前端 + 大图直出两处:
+
+  ① **前端完全没有加载反馈**。`zoomFull()` 直接 `img.src = src` 就结束, 几 MB 的原图
+     解码期间灯箱里**一片空白**, 既没转圈也没提示 —— 用户看到的就是"点了没反应"。
+     `<img>` 出错时也是静默空白, 完全没有原因。
+     现在: 打开大图立刻显示「正在加载大图…」+ 转圈; 失败显示原因和**重试**按钮
+     (重试带 `_r=` 破缓存); 加载完 (`onload`) 才按真实尺寸自适应 —— 以前在
+     `naturalWidth=0` 时就算缩放, 自适应是错的。下载区的 `gbZoom` 也走同一条路径。
+
+  ② **`full=1` 把原图整个发出去**(上限 30MB, 不做任何处理)。单张预览图常有几 MB,
+     解码慢得像卡住; 超 30MB 直接 `413` 空白 —— 这正是"得去详情换一张"的来源
+     (详情页的图片列表走另一条路径)。
+     现在: 超过 900KB 且长边超过 1600px 才**降采样到 1600px**, 结果存进独立缓存
+     目录 `fullview/` 复用。实测一张 10.42 MB / 4000×3000 的图 -> 0.32 MB / 1600×1200
+     (体积降 33 倍, 对"放大看预览图"完全够清楚)。
+     像素读不出来 / 没装 Pillow / 生成失败 —— 一律**回退原图**, 绝不因此让图打不开。
+
+* 新增 `tests/ui_zoom_state.js` 29 项(锁住加载/失败/重试/关闭清理/兜底) 与
+  `tests/test_fullview_downscale.py` 13 项(锁住降采样阈值、缓存复用、异常回退)。
+
 v1.5.80 更新
 -----------
 * **修: 点启用后侧栏计数不跟着变, 得重新扫描** —— 用户实测截图: 刻律德菈 那行显示
@@ -1104,7 +1127,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.80"
+VERSION = "1.5.81"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -1179,6 +1202,11 @@ PRESETS_PATH = os.path.join(DATA_DIR, "presets.json")
 JOURNAL_PATH = os.path.join(DATA_DIR, "journal.jsonl")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
 THUMB_PX = 420
+# v1.5.81: 「放大看大图」的降采样尺寸与缓存目录。
+# 1600px 对"放大看 mod 预览图"足够清楚(卡片缩略图才 420px), 而体积通常小一个量级
+# —— 以前原图直出, 几 MB 的图解码慢得像卡住, 超 30MB 直接 413 空白。
+LB_FULL_MAX_PX = 1600
+FULL_VIEW_DIR = os.path.join(DATA_DIR, "fullview")
 # v1.5.53: 扫描结果缓存目录(按 mods_dir 哈希分文件)，启动秒开用
 SCAN_CACHE_DIR = os.path.join(DATA_DIR, "scan_cache")
 # v1.5.45: 后台压图的工作线程数。原来只有 1 个, 1437 张要排队排 ~60 秒 ——
@@ -9256,6 +9284,42 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(200, html, "text/html; charset=utf-8",
                           extra={"Cache-Control": "no-store"})
 
+    def _full_view_path(self, p):
+        """「放大看大图」用的文件路径。
+
+        v1.5.81: 以前 full=1 直接把**原图**整个发出去(上限 30MB)。用户那些 mod 里
+        单张预览图常有几 MB, 浏览器解码期间灯箱一片空白, 看着像"点了没反应";
+        超过 30MB 的直接 413 空白。用户只能进详情换一张图再放大。
+
+        现在: 超过 LB_FULL_MAX_PX 才降采样, 结果存成独立缓存文件复用。
+        没超过的直接用原图(不损失任何细节)。
+        - 像素数读不出来 / 没装 Pillow / 生成失败 —— 一律回退原图, 绝不因为这一步让图打不开。
+        """
+        try:
+            if os.path.getsize(p) <= 900 * 1024:
+                return p                      # 900KB 以内没必要折腾
+        except OSError:
+            return p
+        Image = _get_pil()
+        if not Image:
+            return p
+        try:
+            with Image.open(p) as im:
+                w, h = im.size
+        except Exception:
+            return p
+        if max(w, h) <= LB_FULL_MAX_PX:
+            return p                          # 本来就不大, 原图直出
+        try:
+            os.makedirs(FULL_VIEW_DIR, exist_ok=True)
+            dst = os.path.join(FULL_VIEW_DIR, thumb_key(p))
+            if not os.path.isfile(dst):
+                if not make_thumb(p, dst, maxpx=LB_FULL_MAX_PX):
+                    return p
+            return dst
+        except Exception:
+            return p
+
     def serve_thumb(self, qs):
         rel = qs.get("p") or ""
         full = (qs.get("full") or "") in ("1", "true", "yes")   # 「放大看大图」送原图
@@ -9270,7 +9334,13 @@ class Handler(BaseHTTPRequestHandler):
         if low.endswith(NEVER_IMAGE_EXTS) or not low.endswith(IMAGE_EXTS):
             return self._send(415, b"", "text/plain")
         if full:
-            tp, cache, cap = p, "max-age=300", 30 * 1024 * 1024
+            # v1.5.81: 放大看大图也做**有上限的降采样**。
+            # 以前这里直接把原图整个发出去(上限 30MB): 用户那些 mod 里单张预览图
+            # 常有几 MB, 浏览器解码慢得像卡住; 超过 30MB 的直接 413, 灯箱一片空白,
+            # 表现就是「点了没反应, 得进详情换一张才行」。
+            # 现在: 超过 LB_FULL_MAX_PX 像素才缩到该尺寸, 存成独立缓存文件复用。
+            # 1600px 对"放大看预览图"足够清楚, 体积通常小一个数量级。
+            tp, cache, cap = self._full_view_path(p), "max-age=86400", 30 * 1024 * 1024
         else:
             tp = cached_thumb(p)
             if tp is None:
