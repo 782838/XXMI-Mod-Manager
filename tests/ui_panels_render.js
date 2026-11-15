@@ -54,13 +54,14 @@ const STATE = {
 };
 
 // 仓库接口: 关键 —— mods_top 里必须有条目, 才能走到那个会崩的 map
+// 注意: 这里全部用**虚构**的路径/名字, 不要写本机的真实目录结构
 const LIBRARY = {
   ok: true,
-  libraries: [{ name:'1a分类整合', path:'F:\\MOD\\ZZMI\\1a分类整合',
-    items:[{name:'1a秘密', size:68088603329, size_h:'63.4 GB', files:16404, disabled:false}],
-    count:1, abs:true, ref:'abs:F:\\MOD\\ZZMI\\1a分类整合', exists:true }],
-  mods_top: [{name:'1aMOD', disabled:false}, {name:'1a功能', disabled:true}],
-  root: 'F:\\MOD', mods_dir: 'F:\\MOD\\ZZMI\\Mods',
+  libraries: [{ name:'SampleLib', path:'X:\\Demo\\SampleLib',
+    items:[{name:'SampleMod', size:68088603329, size_h:'63.4 GB', files:16404, disabled:false}],
+    count:1, abs:true, ref:'abs:X:\\Demo\\SampleLib', exists:true }],
+  mods_top: [{name:'SampleCat', disabled:false}, {name:'SampleCat2', disabled:true}],
+  root: 'X:\\Demo', mods_dir: 'X:\\Demo\\ZZMI\\Mods',
 };
 
 // 注意: cycles 在**顶层** d.cycles, 不在 d.entry 里 —— openDetail 读的是 d.cycles
@@ -121,8 +122,8 @@ function stuck(sel) {
   const libStuck = stuck('#libBody');
   ck('仓库面板不再卡在加载中', libStuck === null, libStuck || '已渲染');
   const libHtml = (d.querySelector('#libBody') || {}).innerHTML || '';
-  ck('仓库面板渲染出了顶层分类', libHtml.includes('1aMOD'), libHtml.length + ' 字');
-  ck('仓库面板渲染出了仓库条目', libHtml.includes('1a分类整合'));
+  ck('仓库面板渲染出了顶层分类', libHtml.includes('SampleCat'), libHtml.length + ' 字');
+  ck('仓库面板渲染出了仓库条目', libHtml.includes('SampleLib'));
   ck('仓库面板渲染出了操作按钮', libHtml.includes('移出到仓库'));
 
   // ---------- 2. 详情弹窗 ----------

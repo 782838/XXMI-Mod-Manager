@@ -46,7 +46,7 @@ ck("空文件 -> srmi 为空", Z.presets_load("srmi") == {})
 print()
 print("=== 2. 存 zzmi 的方案, 不应出现在 srmi ===")
 reset()
-Z.presets_save({"绝区零方案": {"enabled": ["1aMOD/安比"], "total": 1, "saved": 1.0}}, "zzmi")
+Z.presets_save({"绝区零方案": {"enabled": ["DemoCat/DemoModA"], "total": 1, "saved": 1.0}}, "zzmi")
 ck("zzmi 能读到自己的方案", list(Z.presets_load("zzmi").keys()) == ["绝区零方案"],
    list(Z.presets_load("zzmi").keys()))
 ck("srmi 读不到 zzmi 的方案", Z.presets_load("srmi") == {},
@@ -56,7 +56,7 @@ ck("整表里两层都在", set(Z.presets_load().keys()) == {"zzmi"},
 
 print()
 print("=== 3. 再存 srmi 的方案, 两边互不覆盖 ===")
-Z.presets_save({"星铁方案": {"enabled": ["1aMOD/银狼998"], "total": 1, "saved": 2.0}}, "srmi")
+Z.presets_save({"星铁方案": {"enabled": ["DemoCat/DemoModB"], "total": 1, "saved": 2.0}}, "srmi")
 ck("zzmi 仍只有自己的", list(Z.presets_load("zzmi").keys()) == ["绝区零方案"],
    list(Z.presets_load("zzmi").keys()))
 ck("srmi 只有自己的", list(Z.presets_load("srmi").keys()) == ["星铁方案"],
