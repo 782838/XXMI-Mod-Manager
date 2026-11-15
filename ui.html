@@ -129,7 +129,12 @@ aside{
 .navi .cnt{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
 .navi.on .cnt{color:var(--accent2)}
 html[data-theme="light"] .navi.on .cnt{color:var(--accent2)}
-.navi.multi .cnt{color:var(--warn)}
+/* 「这个角色有多套 mod」是**正常状态**, 不是警告 —— 以前这里用的是 --warn(黄),
+   用户看到一排黄字会以为出问题了(实测反馈:「只启用一个为什么会报黄」)。
+   改成中性 info 色, 只表示"有多个可选", 真需要提醒的地方才用黄。 */
+.navi.multi .cnt{color:var(--info)}
+/* 真正需要注意的: 这个角色下有冲突(同角色多套同时启用)。这时才用警示黄。 */
+.navi.hasconf .cnt{color:var(--warn)}
 .navi.sub{padding-left:24px;font-size:12.5px}
 /* 侧栏行 / 卡片上的收藏星标: 平时淡淡, 悬停或已收藏才显眼 */
 .pinbtn{background:none;border:0;cursor:pointer;color:var(--dim);font-size:13px;
@@ -2161,6 +2166,7 @@ const LANG_PACK = {
     "dt.photoHint": "选中的照片会复制进这个 mod 文件夹(命名为 <code>mod_cover.*</code>), 只新增/覆盖这个文件名, 不动你原来的图片和 ini。",
     "card.toggleState": "切换状态",
     "card.multiModTip": "这个角色有 {0} 套 mod",
+    "card.conflictTip": "这个角色有多套 mod 同时启用, hash 会互相覆盖 —— 建议只留一套",
     "card.pinCharTip": "收藏角色: 置顶到列表最前, 该角色下的 mod 也全部置顶",
     "card.zoomTip": "点击放大预览图",
     "card.selTip": "选中这个 mod",
@@ -2186,7 +2192,7 @@ const LANG_PACK = {
     "manual.failEnable": "⚠ 启用失败, 得手动来一下",
     "manual.failDisable": "⚠ 禁用失败, 得手动来一下",
     "manual.denied": "这个 mod 当前<b>没有权限改名</b>(可能被设成只读, 或被杀毒软件锁着)。",
-    "manual.busy": "这个 mod 当前<b>正被占用</b> —— 通常是游戏还开着、3DMigoto 正在读它, 或者资源管理器开着那个文件夹。",
+    "manual.busy": "这个 mod 当前<b>正被占用</b>。最常见是<b>资源管理器开着这个文件夹</b>(尤其开了预览窗格)或<b>杀毒软件正在扫</b>; 其次是游戏/3DMigoto 还开着。",
     "manual.other": "这个 mod 的文件夹被系统挡着没让改名(占用或权限问题)。",
     "manual.intro": "工具帮你改了但没改成功, 这一步你可以自己做 —— 效果和工具做的一模一样:",
     "manual.folder": "文件夹",
@@ -2194,8 +2200,8 @@ const LANG_PACK = {
     "manual.howTo": "<b>怎么做:</b>",
     "manual.step1": "对着那个文件夹按 <b>F2</b>(或右键 → 重命名)",
     "manual.step2": "回到这里按 <b>F9</b> 或点「🔄 重扫」, 状态就更新了",
-    "manual.avoid": "💡 想彻底避免这一步: 先把游戏关掉再操作, 就能一键完成了。",
-    "manual.avoidDenied": "💡 手动改也报「拒绝访问」的话: 先关掉游戏、关掉开着那个文件夹的资源管理器窗口, 再改一次。",
+    "manual.avoid": "💡 想彻底避免这一步: 先**关掉开着这个文件夹的资源管理器窗口**(最常见的原因), 再关掉游戏, 就能一键完成了。",
+    "manual.avoidDenied": "💡 手动改也报「拒绝访问」的话: 先关掉开着那个文件夹的**资源管理器窗口**(含预览窗格), 必要时再关游戏, 然后重试。",
     "manual.goRenameDis": "📂 去改名(加上 DISABLED_)",
     "manual.goDelete": "📂 去删除(删掉 DISABLED_)",
     "manual.copyName": "📋 复制新名字",
@@ -2273,7 +2279,7 @@ const LANG_PACK = {
     "upd.fixPath": "修改路径",
     "main.hotkeys": "游戏里按 <b>F10</b> 直接重载 mod (不用重启), <b>F6</b> 临时开关全部服装 mod。",
     "main.running": "{0}正在运行 —— {1}",
-    "main.busyHint": "游戏开着时个别文件可能被占用, 如果提示\"文件被占用\"就先关游戏再切。",
+    "main.busyHint": "提示\"文件被占用\"时: 最常见是**资源管理器开着那个文件夹**(含预览窗格)或**杀毒软件正在扫**; 其次是游戏/3DMigoto 还开着。按这个顺序排查即可。",
     "main.emptyTitle": "没有符合条件的 mod",
     "main.emptyHint": "换个关键词试试, 或者把筛选条件放宽一点。",
     "main.emptyClear": "清空筛选",
@@ -2295,7 +2301,7 @@ const LANG_PACK = {
     "manual.tEn": "⚠ 启用失败, 得手动来一下",
     "manual.tDis": "⚠ 禁用失败, 得手动来一下",
     "manual.wDenied": "这个 mod 当前<b>没有权限改名</b>(可能被设成只读, 或被杀毒软件锁着)。",
-    "manual.wBusy": "这个 mod 当前<b>正被占用</b> —— 通常是游戏还开着、3DMigoto 正在读它, 或者资源管理器开着那个文件夹。",
+    "manual.wBusy": "这个 mod 当前<b>正被占用</b>。最常见是<b>资源管理器开着这个文件夹</b>(尤其开了预览窗格)或<b>杀毒软件正在扫</b>; 其次是游戏/3DMigoto 还开着。",
     "manual.wOther": "这个 mod 的文件夹被系统挡着没让改名(占用或权限问题)。",
     "manual.stepRen": "把名字改成 <code>{0}</code>(可点下面「复制新名字」再粘贴)",
     "manual.stepEn": "<b>把文件夹名前面的 <code>DISABLED_</code> 删掉</b>",
@@ -2306,7 +2312,7 @@ const LANG_PACK = {
     "manual.folderLabel": "文件夹",
     "manual.renameToLabel": "改成",
     "manual.howLabel": "<b>怎么做:</b>",
-    "manual.avoidAll": "💡 想彻底避免这一步: 先把游戏关掉再操作, 就能一键完成了。",
+    "manual.avoidAll": "💡 想彻底避免这一步: 先**关掉开着这个文件夹的资源管理器窗口**(最常见的原因), 再关掉游戏, 就能一键完成了。",
     "manual.copyNew": "📋 复制新名字",
     "manual.copiedName": "已复制「{0}」—— F2 之后直接粘贴",
     "manual.copyFailName": "复制失败, 手动敲这个名字吧",
@@ -2364,7 +2370,7 @@ const LANG_PACK = {
     "tag.pinned": "📌 已置顶",
     "run.running": "正在运行 —— ",
     "run.keys": "游戏里按 <b>F10</b> 直接重载 mod (不用重启), <b>F6</b> 临时开关全部服装 mod。",
-    "run.busyHint": "游戏开着时个别文件可能被占用, 如果提示\"文件被占用\"就先关游戏再切。",
+    "run.busyHint": "提示\"文件被占用\"时: 最常见是**资源管理器开着那个文件夹**(含预览窗格)或**杀毒软件正在扫**; 其次是游戏/3DMigoto 还开着。按这个顺序排查即可。",
     "pb.tipInit": "档越往下越细(1 档差异最大, 5 档=全部帧) · 左右方向键换帧 · 按 <b>回车</b>或「留这张」把当前帧存进照片墙 · 点大图<b>全屏</b>(全屏后滚轮缩放、按住拖动平移、<b>Esc 只退出放大</b>不关本页) · 没留的关掉即弃, 不落盘",
     "dt.cycleHint": "游戏里按 <b>{0}</b> 循环切换变体 · 默认停在 #{1}",
     "dt.rebind": "改键",
@@ -2846,6 +2852,7 @@ const LANG_PACK = {
     "dt.photoHint": "The chosen photo is copied into this mod folder as <code>mod_cover.*</code>; only that filename is added/overwritten — your images and inis are untouched.",
     "card.toggleState": "Toggle state",
     "card.multiModTip": "This character has {0} mods",
+    "card.conflictTip": "Several of this character's mods are enabled at once and will overwrite each other — keep just one",
     "card.pinCharTip": "Pin character: sort this character to the top and pin all of its mods too",
     "card.zoomTip": "Click to enlarge the preview",
     "card.selTip": "Select this mod",
@@ -2871,7 +2878,7 @@ const LANG_PACK = {
     "manual.failEnable": "⚠ Enable failed — do it manually",
     "manual.failDisable": "⚠ Disable failed — do it manually",
     "manual.denied": "This mod currently <b>cannot be renamed</b> (it may be read-only or locked by antivirus).",
-    "manual.busy": "This mod is <b>in use</b> — usually the game is still running, 3DMigoto is reading it, or Explorer has that folder open.",
+    "manual.busy": "This mod is <b>in use</b>. The usual culprit is <b>Explorer having this folder open</b> (especially with the preview pane) or <b>antivirus scanning it</b>; the game/3DMigoto still running comes second.",
     "manual.other": "The system blocked renaming this mod's folder (in use or permission issue).",
     "manual.intro": "The tool tried but could not finish; you can do this step yourself — the result is identical:",
     "manual.folder": "Folder",
@@ -2879,8 +2886,8 @@ const LANG_PACK = {
     "manual.howTo": "<b>How:</b>",
     "manual.step1": "Select that folder and press <b>F2</b> (or right-click → Rename)",
     "manual.step2": "Come back and press <b>F9</b> or click \"🔄 Rescan\"; the state updates",
-    "manual.avoid": "💡 To avoid this entirely: close the game first, then it works in one click.",
-    "manual.avoidDenied": "💡 If manual renaming also says access denied: close the game and any Explorer window on that folder, then try again.",
+    "manual.avoid": "💡 To avoid this entirely: first close the **Explorer window showing this folder** (the most common cause), then close the game — it will then work in one click.",
+    "manual.avoidDenied": "💡 If manual renaming also says access denied: close any **Explorer window on that folder** (including the preview pane), close the game if needed, then try again.",
     "manual.goRenameDis": "📂 Go rename (add DISABLED_)",
     "manual.goDelete": "📂 Go delete (remove DISABLED_)",
     "manual.copyName": "📋 Copy new name",
@@ -2958,7 +2965,7 @@ const LANG_PACK = {
     "upd.fixPath": "Change path",
     "main.hotkeys": "In game press <b>F10</b> to reload mods (no restart), <b>F6</b> to toggle all outfit mods.",
     "main.running": "{0}is running — {1}",
-    "main.busyHint": "Some files may be locked while the game runs; if you see \"file in use\", close the game and switch again.",
+    "main.busyHint": "If you see \"file in use\": the usual culprit is Explorer having that folder open (including the preview pane) or antivirus scanning it — the game/3DMigoto still running comes second. Check them in that order.",
     "main.emptyTitle": "No matching mods",
     "main.emptyHint": "Try another keyword, or loosen the filters.",
     "main.emptyClear": "Clear filters",
@@ -2980,7 +2987,7 @@ const LANG_PACK = {
     "manual.tEn": "⚠ Enable failed — do it manually",
     "manual.tDis": "⚠ Disable failed — do it manually",
     "manual.wDenied": "This mod currently <b>cannot be renamed</b> (it may be read-only or locked by antivirus).",
-    "manual.wBusy": "This mod is <b>in use</b> — usually the game is still running, 3DMigoto is reading it, or Explorer has that folder open.",
+    "manual.wBusy": "This mod is <b>in use</b>. The usual culprit is <b>Explorer having this folder open</b> (especially with the preview pane) or <b>antivirus scanning it</b>; the game/3DMigoto still running comes second.",
     "manual.wOther": "The system blocked renaming this mod's folder (in use or permission issue).",
     "manual.stepRen": "Rename it to <code>{0}</code> (you can click \"Copy new name\" below and paste)",
     "manual.stepEn": "<b>Remove the <code>DISABLED_</code> prefix from the folder name</b>",
@@ -2991,7 +2998,7 @@ const LANG_PACK = {
     "manual.folderLabel": "Folder",
     "manual.renameToLabel": "Rename to",
     "manual.howLabel": "<b>How:</b>",
-    "manual.avoidAll": "💡 To avoid this entirely: close the game first, then it works in one click.",
+    "manual.avoidAll": "💡 To avoid this entirely: first close the **Explorer window showing this folder** (the most common cause), then close the game — it will then work in one click.",
     "manual.copyNew": "📋 Copy new name",
     "manual.copiedName": "Copied \"{0}\" — paste it after pressing F2",
     "manual.copyFailName": "Copy failed — type the name manually",
@@ -3049,7 +3056,7 @@ const LANG_PACK = {
     "tag.pinned": "📌 Pinned",
     "run.running": "is running — ",
     "run.keys": "Press <b>F10</b> in game to reload mods (no restart), <b>F6</b> to toggle all outfit mods.",
-    "run.busyHint": "Some files may be locked while the game runs; if you see \"file in use\", close the game and switch again.",
+    "run.busyHint": "If you see \"file in use\": the usual culprit is Explorer having that folder open (including the preview pane) or antivirus scanning it — the game/3DMigoto still running comes second. Check them in that order.",
     "pb.tipInit": "Lower tiers are finer (tier 1 = biggest difference, tier 5 = every frame) · ←/→ to change frame · press <b>Enter</b> or \"Keep this one\" to save the current frame to the wall · click the big image for <b>fullscreen</b> (scroll to zoom, drag to pan, <b>Esc only leaves zoom</b>) · anything not kept is discarded on close",
     "dt.cycleHint": "Press <b>{0}</b> in game to cycle variants · default is #{1}",
     "dt.rebind": "Rebind",
@@ -3294,8 +3301,8 @@ function renderChars(){
   $("#multiHint").textContent = S.stats.multi_chars ? t("side.multiChars", S.stats.multi_chars) : "";
   if (!list.length){ box.innerHTML = '<div class="hint" style="padding:8px 10px">' + esc(t("side.noChar")) + '</div>'; return; }
   box.innerHTML = list.map(c => `
-    <button class="navi sub ${c.multi?"multi":""} ${c.pinned?"pinned-row":""} ${scope.type==="char"&&scope.value===c.name?"on":""}"
-        data-char="${esc(c.name)}" title="${c.multi?esc(t("card.multiModTip", c.count)):""}">
+    <button class="navi sub ${c.multi?"multi":""} ${c.hasconf?"hasconf":""} ${c.pinned?"pinned-row":""} ${scope.type==="char"&&scope.value===c.name?"on":""}"
+        data-char="${esc(c.name)}" title="${c.hasconf?esc(t("card.conflictTip")):(c.multi?esc(t("card.multiModTip", c.count)):"")}">
       <span class="nm" data-dyn="char">${esc(c.name)}</span>
       <span class="cnt">${c.multi ? "×"+c.count+" " : ""}${c.enabled}/${c.count}</span>
       <span class="pinbtn ${c.pinned?"on":""}" data-pin-char="${esc(c.name)}"

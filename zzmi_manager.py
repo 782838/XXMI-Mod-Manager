@@ -5,6 +5,34 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.79 更新
+-----------
+* **修: 弹窗把「被占用」错报成「没有权限改名」+ 一律让用户关游戏** ——
+  用户截图: 标题「禁用失败」, 正文却说「这个 mod 当前没有权限改名(可能被设成只读,
+  或被杀毒软件锁着)」, 而实际原因往往只是**资源管理器开着那个文件夹**。
+  根因: `lock_reason_kind()` 原来**先判 denied 再判 busy**, 而 busy 的文案里本来就会
+  提到「杀软」(杀软扫盘也是占用来源之一), 于是被 "杀软" 命中 -> 错判成 denied。
+  实测复现: `lock_reason()` 返回「正被别的程序占用…」, kind 却是 `denied`。
+  修法: 判定顺序改成**先 busy 后 denied**(占用类措辞更具体), 只有完全不像占用才判 denied。
+  同时把所有「被占用」文案的归因改对 —— 按真实可能性排序:
+    **① 资源管理器开着这个文件夹(含预览窗格) ② 杀毒软件正在扫 ③ 游戏/3DMigoto 还开着**
+  原来一律写「先把游戏关掉再操作」是错的(`lock_reason` 用试删探测, 根本分不清谁占的)。
+  新增 `tests/test_busy_reason.py` 16 项(含真持句柄复现占用)。
+
+* **修: 侧栏角色行「只启用一个也报黄」** —— 用户实测截图里 刻律德菈 ×12 12/12、
+  功能 ×2 2/2、卡芙卡 ×9 1/9、大丽花 ×3 1/3 全是黄字, 问「只启用一个为什么会报黄」。
+  根因: `.navi.multi .cnt{color:var(--warn)}` —— 拿**警示黄**去标「这个角色有多套 mod」。
+  但「有多套」是**正常状态**(同角色准备多套时装本来就要能选), 跟启用几个毫无关系。
+  现在把两种语义分开:
+    · **有多套**(multi) -> 中性 info 蓝, 只表示「这里有多个可选」
+    · **多套同时启用**(hasconf, hash 会互相覆盖) -> 警示黄, 这才是真该提醒的
+  后端 `chars` 新增 `hasconf` 字段(由冲突列表反推角色), 前端据此上色。
+  实测印证: 刻律德菈 13 套全部启用 -> hasconf=True 仍黄(该黄);
+            卡芙卡 9 套只启用 1 套 -> hasconf=False 不再黄(之前误黄)。
+  新增 `tests/ui_sidebar_color.js` 18 项锁住这个语义。
+
+* **修: 注释里的 Windows 路径触发 `SyntaxWarning: invalid escape sequence`**。
+
 v1.5.78 更新
 -----------
 * **隐私清理**: 源码与测试里引用的**本机真实目录 / mod 文件夹名**全部换成通用占位。
@@ -1055,7 +1083,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.78"
+VERSION = "1.5.79"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -1741,7 +1769,7 @@ _INVALID = -1
 
 _LOCK_TEXT = {
     5: "权限被拒绝(只读属性 / 杀软拦截 / 没有管理员权限)",
-    32: "正被别的程序占用(最可能是游戏还开着, 或资源管理器开着这个目录)",
+    32: "正被别的程序占用(最常见是资源管理器开着这个目录, 其次杀软; 游戏还开着也有可能)",
     33: "文件被锁定",
 }
 
@@ -1912,7 +1940,7 @@ def move_dir(src, dst, rec=None, tries=3):
         return False, "被占用: %s" % why
     msg = str(last or "")
     if "另一个程序正在使用" in msg or "being used by another" in msg:
-        return False, "被占用(游戏或资源管理器开着这个目录), 关掉再试"
+        return False, "被占用(资源管理器开着这个目录最常见, 其次杀软/游戏), 关掉再试"
     return False, "失败: %s" % msg
 
 
@@ -3129,10 +3157,19 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
     ch = {}
     for e in entries:
         ch.setdefault(e["char"], []).append(e)
+    # v1.5.79: 侧栏角色行原来把「有多套」标成黄色(--warn), 用户看到一排黄字会以为
+    # 出问题了(实测反馈「只启用一个为什么会报黄」)。「多套」其实是正常状态 ——
+    # 同角色准备了多套时装本来就要能选。真正该警示的是「同角色下有多套同时启用」,
+    # 那才会互相覆盖。这里给出行级冲突标记, 前端据此上黄。
+    _conf_chars = set()
+    for cf in res.conflicts:
+        _conf_chars.add(cf.get("a_char") or "")
+        _conf_chars.add(cf.get("b_char") or "")
     res.chars = [{"name": c, "count": len(v),
                   "enabled": sum(1 for i in v if i["enabled"]),
                   "pinned": c in pch,
-                  "multi": len(v) > 1}
+                  "multi": len(v) > 1,
+                  "hasconf": c in _conf_chars}
                  for c, v in sorted(ch.items(),
                                     key=lambda kv: (kv[0] not in pch,
                                                     kv[0].lower()))]
@@ -3584,7 +3621,7 @@ def _rename_dir(src, dst, rec, tries=3):
                        "把游戏 / 资源管理器窗口关掉(或稍等两秒)再点一次即可。" % why)
     msg = str(last or "")
     if "另一个程序正在使用" in msg or "being used by another" in msg:
-        msg = "文件被占用(游戏或资源管理器开着这个目录), 先关掉再试。"
+        msg = "文件被占用 —— 最常见是资源管理器开着这个目录(含预览窗格)或杀毒软件在扫; 其次是游戏还开着。按这个顺序排查。"
     return False, "重命名失败: %s" % msg
 
 
@@ -3734,7 +3771,7 @@ def do_toggle_file(abs_root, rel, enable):
     except OSError as ex:
         msg = str(ex)
         if "另一个程序正在使用" in msg or "being used by another" in msg:
-            msg = "文件被占用(游戏正在用它), 先关游戏或稍后再试。"
+            msg = "文件被占用 —— 最常见是资源管理器开着那个文件夹(含预览窗格)或杀毒软件在扫; 其次是游戏正在用它。"
         return False, "重命名失败: %s" % msg
     journal_append({"kind": "file_toggle", "src": p, "dst": dst,
                     "enable": bool(enable), "id": rel, "name": name})
@@ -4471,8 +4508,14 @@ def lock_reason_kind(msg):
     """把重命名失败的中文原因归成 'busy'(被占用) / 'denied'(权限) / 'other',
     前端据此决定弹"手动加 DISABLED_"还是"手动删 DISABLED_"。
 
-    注意顺序: _rename_dir 在真的被拒时给的是 lock_reason 文案, 而权限那类措辞
-    (拒绝访问 / 只读 / 杀软) 也可能同时出现"占用"字样, 所以先判 denied。
+    v1.5.79 修: 原来的判定顺序**先判 denied 再判 busy**, 而 busy 的文案里本来就会
+    提到"杀软"(杀毒软件正在扫也是占用来源之一), 于是「正被别的程序占用…其次杀软…」
+    被 "杀软" 命中 -> 错判成 denied -> 弹窗说「没有权限改名(可能被设成只读, 或被杀毒
+    软件锁着)」。实测复现: lock_reason 明明返回「正被别的程序占用」, kind 却是 denied,
+    用户看到的就是截图里那句「这个 mod 当前没有权限改名」, 而真实原因是资源管理器
+    开着那个文件夹。
+
+    所以:**先判 busy**(占用类措辞更具体), 只有完全不像占用时才判 denied。
     """
     m = msg or ""
     # v1.5.8: 「因为「XXX」已被占用, 自动改名为…」是**成功**消息(v1.5.8 的重名自动加后缀),
@@ -4480,10 +4523,11 @@ def lock_reason_kind(msg):
     # 被当成"文件被占用"而错弹手动改名教程。
     if "自动改名" in m:
         return "other"
+    # 先判占用: 这类文案里可能同时出现"杀软"(它是占用来源之一), 不能让它抢到 denied
+    if "占用" in m or "正被别的程序" in m or "资源管理器" in m or "游戏" in m:
+        return "busy"
     if "拒绝访问" in m or "权限" in m or "只读" in m or "杀软" in m:
         return "denied"
-    if "占用" in m or "打开" in m or "游戏" in m:
-        return "busy"
     return "other"
 
 
@@ -4731,7 +4775,7 @@ def recycle_path(abs_path):
         return True, "已移到回收站"
     return False, {
         0x7C: "没找到这个文件夹(可能已被移走)",
-        0x74: "这个文件夹正被占用 —— 先关掉游戏再试",
+        0x74: "这个文件夹正被占用 —— 先关掉资源管理器里开着它的窗口(或游戏)再试",
         0x57: "参数不对(路径异常)",
         0x3A: "路径太长, 先把 mod 挪到浅一点的目录",
     }.get(rc, "移到回收站失败(code=%d)%s" % (rc, ""))
