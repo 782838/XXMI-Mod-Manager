@@ -5016,12 +5016,39 @@ def pick_folder(initial="", owner=None, title="选择 mod 下载保存到哪个�
 # 方案 / 进程 / 启动
 # ===========================================================================
 
-def presets_load():
-    return read_json(PRESETS_PATH, {})
+def presets_load(game=None):
+    """读方案表。
+
+    v1.5.76: 方案**按游戏隔离**。以前 presets.json 是一份扁平的 {方案名: {...}},
+    绝区零存的方案在星铁那边原样可见、还能套用 —— 但两边 Mods 目录完全不同,
+    套过去只会把星铁里 id 对不上的 mod 全禁掉, 属于纯破坏。现在按游戏 key 分层:
+
+        {"zzmi": {"方案名": {...}}, "srmi": {...}, "wwmi": {...}}
+
+    game=None 时返回整份(兼容老调用方); 传了 game 就只返回该游戏的子表。
+    老格式(扁平)**不做自动迁移** —— 那批方案属于哪个游戏无法可靠判定, 硬猜会
+    把用户的绝区零方案错标成星铁。老条目仍在文件里(键名不是游戏 key), 想找回
+    可以在界面按当前游戏重存一次; 确需找回旧数据的, 见 CHANGELOG 的说明。
+    """
+    raw = read_json(PRESETS_PATH, {})
+    if not isinstance(raw, dict):
+        return {} if game else {}
+    if game is None:
+        return raw
+    sub = raw.get(game)
+    return sub if isinstance(sub, dict) else {}
 
 
-def presets_save(obj):
-    write_json(PRESETS_PATH, obj)
+def presets_save(obj, game=None):
+    """写方案表。传 game 时只替换该游戏那一层, 其余游戏原样保留。"""
+    if game is None:
+        write_json(PRESETS_PATH, obj)
+        return
+    raw = read_json(PRESETS_PATH, {})
+    if not isinstance(raw, dict):
+        raw = {}
+    raw[game] = obj
+    write_json(PRESETS_PATH, raw)
 
 
 _proc_cache = {"t": 0, "game": False, "launcher": False, "game_pid": 0}
@@ -7250,7 +7277,9 @@ class App(object):
             "pinned_mods": self.cfg.get("pinned_mods") or [],
             "pinned_cats": self.cfg.get("pinned_cats") or [],
             "pinned_chars": self.cfg.get("pinned_chars") or [],
-            "conflicts": s.conflicts, "presets": presets_load(),
+            "conflicts": s.conflicts,
+            # v1.5.76: 方案按游戏隔离 —— 只回当前游戏的, 别把绝区零的方案摆到星铁面前
+            "presets": presets_load(self.cfg.get("active_game") or ""),
             "journal": [{"ts": r.get("ts"), "kind": r.get("kind"),
                          "name": r.get("name") or os.path.basename(r.get("src") or ""),
                          "enable": r.get("enable"), "t": human_time(r.get("ts"))}
@@ -9643,14 +9672,18 @@ class Handler(BaseHTTPRequestHandler):
         app = self.app
         act = body.get("action")
         name = (body.get("name") or "").strip()
-        presets = presets_load()
+        # v1.5.76: 方案按游戏隔离 —— 存取都限定在当前游戏那一层
+        gid = app.cfg.get("active_game") or ""
+        if not gid:
+            return {"ok": False, "msg": "还没确定当前游戏, 无法操作方案"}
+        presets = presets_load(gid)
         if act == "save":
             if not name:
                 return {"ok": False, "msg": "请填方案名"}
             presets[name] = {
                 "enabled": sorted(e["id"] for e in app.scan.entries if e["enabled"]),
                 "total": len(app.scan.entries), "saved": time.time()}
-            presets_save(presets)
+            presets_save(presets, gid)
             return {"ok": True, "msg": "已保存方案「%s」" % name,
                     "state": app.state()}
         if act == "apply":
@@ -9677,7 +9710,7 @@ class Handler(BaseHTTPRequestHandler):
             if name not in presets:
                 return {"ok": False, "msg": "没有这个方案"}
             presets.pop(name, None)
-            presets_save(presets)
+            presets_save(presets, gid)
             return {"ok": True, "msg": "已删除方案「%s」" % name,
                     "state": app.state()}
         return {"ok": False, "msg": "未知操作"}
