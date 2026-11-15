@@ -5,6 +5,27 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.80 更新
+-----------
+* **修: 点启用后侧栏计数不跟着变, 得重新扫描** —— 用户实测截图: 刻律德菈 那行显示
+  0/10, 点卡片启用后左边仍是旧数字。根因: `doToggle()` 的乐观更新只改了
+  `S.entries` 里卡片的 `enabled`, **没动 `S.chars` 的计数**, 而 `S.chars` 是后端
+  返回的快照, 要等下一次轮询才更新。现在: ①乐观更新时同步重算受影响角色的
+  enabled/count; ②`renderChars()` 干脆从 `entries` 现场重算, 不吃旧快照 ——
+  卡片和侧栏永远同一帧一致, 不用等重扫。
+
+* **修: 侧栏「多套」的蓝色判定造成新歧义** —— 上一版把「这个角色有多套 mod」标成
+  info 蓝, 用户问「一个没开也是蓝色的是啥意思, 这个蓝色的判定标准是什么」。
+  蓝色不该表示"有多套"(那是正常状态, 和启用几个无关)。现在:
+    · **蓝色(--accent2)只有一个含义: 你正在看这一行**(`.navi.on`)
+    · 「有多套」不加任何颜色(直接不显示 ×N 以外的特殊色)
+    · **唯一的颜色警示是黄色**: 同角色多套同时启用, hash 会互相覆盖(`hasconf`)
+  另外 `hasconf` 的重算加了一道保护: `S.conflicts` 为空数组时**保留后端算好的值**,
+  不能因为"空数组也是 Array"就把黄标全刷掉。
+
+* 新增 `tests/ui_toggle_sync.js` 14 项(照用户截图造 0/10 场景, 断言点一次就变 1/10,
+  再点全开变 10/10, 关一个变 9/10), 并把 `tests/ui_sidebar_color.js` 更新到新语义。
+
 v1.5.79 更新
 -----------
 * **修: 弹窗把「被占用」错报成「没有权限改名」+ 一律让用户关游戏** ——
@@ -1083,7 +1104,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.79"
+VERSION = "1.5.80"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork

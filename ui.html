@@ -129,11 +129,10 @@ aside{
 .navi .cnt{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
 .navi.on .cnt{color:var(--accent2)}
 html[data-theme="light"] .navi.on .cnt{color:var(--accent2)}
-/* 「这个角色有多套 mod」是**正常状态**, 不是警告 —— 以前这里用的是 --warn(黄),
-   用户看到一排黄字会以为出问题了(实测反馈:「只启用一个为什么会报黄」)。
-   改成中性 info 色, 只表示"有多个可选", 真需要提醒的地方才用黄。 */
-.navi.multi .cnt{color:var(--info)}
-/* 真正需要注意的: 这个角色下有冲突(同角色多套同时启用)。这时才用警示黄。 */
+/* 「这个角色有多套 mod」是**正常状态**, 不该有任何特殊颜色。
+   v1.5.79 这里先改成 --info(蓝), 结果又造成新歧义 —— 用户问「一个没开也是蓝色的是啥意思」。
+   蓝色(accent2)现在是**唯一含义: 你正在看这一行**(.navi.on)。多套不加色, 用默认灰。
+   唯一的颜色提醒是下面这条: 同角色多套同时启用, hash 会互相覆盖。 */
 .navi.hasconf .cnt{color:var(--warn)}
 .navi.sub{padding-left:24px;font-size:12.5px}
 /* 侧栏行 / 卡片上的收藏星标: 平时淡淡, 悬停或已收藏才显眼 */
@@ -3297,8 +3296,42 @@ function renderPath(){
 
 function renderChars(){
   const box = $("#chars");
+  // v1.5.80: 用 entries 现场重算每个角色的 已启用/总数 与 冲突标记, 不直接吃 S.chars 的旧值。
+  // 原因: doToggle 的乐观更新只改了 entries, S.chars 是后端返回的快照, 要等下一次轮询
+  // 才更新 —— 用户点了启用, 侧栏那行还是旧数字, 看起来像"有延迟, 得重新扫描"。
+  // 这里统一从 entries 算, 保证卡片和侧栏永远同一帧一致。
+  if (Array.isArray(S.chars) && Array.isArray(S.entries)){
+    const stat = {};
+    (S.entries||[]).forEach(x => {
+      const k = x.char;
+      if (!k) return;
+      const s = stat[k] || (stat[k] = {on:0, all:0});
+      s.all++;
+      if (x.enabled) s.on++;
+    });
+    // 冲突角色: 从冲突列表反推(后端给的 a_char/b_char)。
+    // 注意: 只有 conflicts **真有数据**时才重算。空数组([])也算 Array.isArray===true,
+    // 如果无脑重算会把后端算好的 hasconf 全刷成 false —— 黄标就没了。
+    // conflicts 为空/缺失时一律保留后端给的 hasconf。
+    if (Array.isArray(S.conflicts) && S.conflicts.length){
+      const confChars = new Set();
+      S.conflicts.forEach(cf => {
+        if (cf.a_char) confChars.add(cf.a_char);
+        if (cf.b_char) confChars.add(cf.b_char);
+      });
+      S.chars.forEach(c => { c.hasconf = confChars.has(c.name); });
+    }
+    S.chars.forEach(c => {
+      const s = stat[c.name];
+      if (s){ c.enabled = s.on; c.count = s.all; }
+      c.multi = (c.count || 0) > 1;
+    });
+  }
   const list = (S.chars||[]).filter(c => !charQ || c.name.toLowerCase().includes(charQ));
-  $("#multiHint").textContent = S.stats.multi_chars ? t("side.multiChars", S.stats.multi_chars) : "";
+  // 顶部那句「N 个角色有多套」也按当前数据重算, 别让数字和下面列表对不上
+  const nMulti = (S.chars||[]).filter(c => c.multi).length;
+  if (S.stats) S.stats.multi_chars = nMulti;
+  $("#multiHint").textContent = nMulti ? t("side.multiChars", nMulti) : "";
   if (!list.length){ box.innerHTML = '<div class="hint" style="padding:8px 10px">' + esc(t("side.noChar")) + '</div>'; return; }
   box.innerHTML = list.map(c => `
     <button class="navi sub ${c.multi?"multi":""} ${c.hasconf?"hasconf":""} ${c.pinned?"pinned-row":""} ${scope.type==="char"&&scope.value===c.name?"on":""}"
@@ -4119,10 +4152,34 @@ async function doToggle(ids, enabled){
   const m = {};
   (S.entries||[]).forEach(x => { m[x.id] = x; });
   let hit = 0;
+  const touched = new Set();
   (ids||[]).forEach(id => {
     const e = m[id];
-    if (e){ e.enabled = enabled; e.dir_disabled = !enabled; hit++; }
+    if (e){
+      e.enabled = enabled;
+      e.dir_disabled = !enabled;
+      // 记住哪些角色受影响, 下面要同步重算侧栏计数
+      if (e.char) touched.add(e.char);
+      hit++;
+    }
   });
+  // v1.5.80: 侧栏角色行的 `已启用/总数` 也要跟着动。
+  // 原来只改了 entries, 没动 S.chars, 于是用户点了启用, 左边那行还是旧数字,
+  // 必须重新扫描才变(实测反馈:「明显有延迟, 我启用了还是 0」)。
+  // 这里直接从 entries 重算这几个角色的计数, 不碰后端。
+  if (touched.size && Array.isArray(S.chars)){
+    S.chars.forEach(c => {
+      if (!touched.has(c.name)) return;
+      let on = 0, all = 0;
+      (S.entries||[]).forEach(x => {
+        if (x.char !== c.name) return;
+        all++;
+        if (x.enabled) on++;
+      });
+      c.enabled = on;
+      c.count = all;
+    });
+  }
   if (hit) renderAll();
   if (curDetail && ids.includes(curDetail)) openDetail(curDetail, true);
   // ② 屏幕下方轻提示: 不弹窗、不用点确认

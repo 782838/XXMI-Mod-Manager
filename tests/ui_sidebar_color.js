@@ -29,13 +29,16 @@ function ck(name, cond, extra) {
 }
 
 // ---------- 1. 静态: 样式语义 ----------
-const cssMulti = /\.navi\.multi\s+\.cnt\s*\{[^}]*color\s*:\s*var\(--info\)/.test(UI);
+// v1.5.80 修正: 「多套」**不给任何颜色**(用户反馈「一个没开也是蓝色的是啥意思」)。
+// 蓝色(--accent2)只属于 .navi.on ——「你正在看这一行」。
+// 唯一的颜色警示是 hasconf(多套同时启用, hash 会互相覆盖)。
+const noMultiColor = !/\.navi\.multi\s+\.cnt\s*\{[^}]*color\s*:/.test(UI);
 const cssConf = /\.navi\.hasconf\s+\.cnt\s*\{[^}]*color\s*:\s*var\(--warn\)/.test(UI);
-const cssOld = /\.navi\.multi\s+\.cnt\s*\{[^}]*color\s*:\s*var\(--warn\)/.test(UI);
+const cssOn = /\.navi\.on\s+\.cnt\s*\{[^}]*color\s*:\s*var\(--accent2\)/.test(UI);
 
-ck('multi 用中性 info 色(不再用警示黄)', cssMulti, cssMulti ? 'var(--info)' : '未匹配');
+ck('「多套」不再有任何专门颜色', noMultiColor, noMultiColor ? '无专门着色' : '仍在着色');
+ck('蓝色只给「正在看这一行」(.navi.on)', cssOn);
 ck('hasconf 用警示黄', cssConf, cssConf ? 'var(--warn)' : '未匹配');
-ck('旧的 multi->warn 写法已移除', !cssOld);
 
 // --info 必须在三套主题里都有值, 否则颜色会 fallback 成继承色
 const infoDefs = (UI.match(/--info\s*:\s*[^;]+;/g) || []).length;
@@ -76,7 +79,10 @@ const STATE = {
   photo_burst: { burst_id: 0, frames: [], tiers: [], pending: false },
   photo_press_seq: 0, photo_press_pending: false, photo_scroll_buffer: false,
   games: [], games_visible: [], enabled_games: [],
-  active_game: 'zzmi', views: {}, game_label: 'X', conflicts: [],
+  active_game: 'zzmi', views: {}, game_label: 'X',
+  // ConfChar 的两套都启用 -> 真冲突。列表要给出, 侧栏才会挂 hasconf(黄)
+  conflicts: [{ a_name:'c5', b_name:'c6', a_char:'ConfChar', b_char:'ConfChar',
+                n: 3, same_char: true, b: 'c6' }],
 };
 
 const dom = new JSDOM(UI.replace('__BOOT__', JSON.stringify({ token: 't', version: '1.5.78' })), {
