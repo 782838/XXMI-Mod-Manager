@@ -90,3 +90,8 @@ _下一轮*.md
 
 # i18n 批量改写期间的自动备份(v1.5.79)
 ui.html.bak_*
+
+# UI 测试需要的 jsdom（tests/ui_*.js 用）
+node_modules/
+package.json
+pnpm-lock.yaml

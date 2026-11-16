@@ -5,6 +5,40 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.82 更新
+-----------
+* **修: 「新建仓库 / 寻找仓库」按钮点了没反应, 仓库也没按游戏隔开** —— 用户实测。
+  这一条底下其实压着**四个**独立缺陷, 逐个说:
+
+  ① **按钮文字本身坏掉了**（最直接的那个）。v1.5.76 做全盘英文化时, 把
+     `${esc(t("libmgr.find"))}` 这类**模板占位符原样写进了静态 HTML**。
+     静态 HTML 不经过 JS 模板渲染, 所以界面上真的显示成一串
+     `${esc(t("..."))}` 代码 —— 「＋ 在 XXMI 下新建」「📁 手动寻找仓库路径…」
+     这些按钮看上去就是个诡异的代码块。共 **21 处**, 分布在仓库管理、文件夹
+     选择器、下载区、连拍、手动改名等 5 个面板。
+     现在全部改回 `<span data-i18n="key">中文原文</span>` —— 中文直显, 切英文
+     仍由 applyI18n 统一刷新。
+
+  ② **目录选择器被仓库管理面板压住**。点「寻找仓库路径」会叠出目录选择器,
+     但两者 z-index 都是 70, 而 `#libmgr` 在 DOM 里排在后面 —— 选择器**看得见
+     却点不到**任何目录。现在 `#dirpick` 提到 78, 永远在最上层。
+
+  ③ **选择器一打开是空的**。原来 `dpLoad(dpCur || "")`, 首次 `dpCur` 为空,
+     后端收到空路径只回「请选一个位置」+ 空列表, 用户看到的就是一个白框,
+     自然认为"按钮坏了"。现在空的时候直接定位到 **XXMI 根目录**, 一打开就有
+     一列可选文件夹。
+
+  ④ **仓库列表缓存不认游戏**。`_lib_cache` 只比 90 秒时间戳, 不比游戏 key,
+     切到另一个游戏后 90 秒内仍返回上一个游戏的仓库列表（实测: 配置里
+     `libs_abs` 有一个仓库, 界面却显示 0 个）。现在缓存带 `gid`, 切游戏时
+     主动 `invalidate_lib_cache()`, 读写都按当前游戏命中。
+
+* 顺带修: 切英文后 **目录选择器标题/确定按钮仍显示中文** —— 原来 `openDirPick`
+  把**翻译好的字符串**写进 DOM, 切语言后 applyI18n 无从下手。现在改成传
+  词条 key(`titleKey`/`okKey`), 挂成 data-i18n, 中英都跟着变。
+* 顺带修: 下载目录面板里 `"目录里 N 个文件 · 共 …"` 与「下载目录还是空的」
+  是硬编码中文, 切英文不跟着变。已补 `gb.dlStat` / `gb.dlEmpty` 词条。
+
 v1.5.81 更新
 -----------
 * **修: 点缩略图放大「有时候加载不出来, 得进详情换张图才行」** —— 用户实测。
@@ -1127,7 +1161,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.81"
+VERSION = "1.5.82"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -5188,12 +5222,16 @@ def presets_save(obj, game=None):
 
 
 _proc_cache = {"t": 0, "game": False, "launcher": False, "game_pid": 0}
-_lib_cache = {"t": 0, "data": None}
+# v1.5.82: 除了时间戳，还记「这份缓存是哪个游戏的」。仓库列表是**按当前游戏的
+# cfg** 算出来的，只靠 90 秒过期不够 —— 切游戏后必须立刻失效，否则会看到
+# 上一个游戏的仓库（实测就是这个症状）。
+_lib_cache = {"t": 0, "data": None, "gid": None}
 
 
 def invalidate_lib_cache():
     _lib_cache["data"] = None
     _lib_cache["t"] = 0
+    _lib_cache["gid"] = None
 
 
 def proc_probe(cfg, force=False):
@@ -7048,6 +7086,10 @@ class App(object):
             # 2) 换活动游戏并摊平
             self.cfg = cfg_flatten(games, glob, gid)
             apply_photo_dir(self.cfg)
+            # v1.5.82: 仓库列表缓存必须清 —— 它是按「当前游戏的 cfg」算出来的。
+            # 不清的话切游戏后 90 秒内一直返回上一个游戏的仓库列表
+            # (实测: 切到绝区零, 配置里 libs_abs 有一个仓库, 界面却显示 0 个)。
+            invalidate_lib_cache()
             # 3) 先把目标游戏的扫描缓存**立刻**顶上(没有缓存就是空列表, 也不等)
             md = find_mods_dir(self.cfg)
             cached = load_scan_cache(md) if md else None
@@ -9466,7 +9508,11 @@ class Handler(BaseHTTPRequestHandler):
     def library_list(self):
         app = self.app
         now = time.time()
-        if _lib_cache["data"] is not None and now - _lib_cache["t"] < 90:
+        # v1.5.82: 缓存要**按游戏**命中 —— 仓库是每个游戏各配各的,
+        # 只比时间不比游戏就会把上一个游戏的仓库列表返回给新游戏。
+        gid = app.cfg.get("active_game") or ""
+        if (_lib_cache["data"] is not None and _lib_cache.get("gid") == gid
+                and now - _lib_cache["t"] < 90):
             return _lib_cache["data"]
         root = app.cfg.get("xxmi_root") or ""
         out = []
@@ -9506,6 +9552,7 @@ class Handler(BaseHTTPRequestHandler):
         data = {"libraries": out, "mods_top": tops, "root": root, "mods_dir": md}
         _lib_cache["t"] = now
         _lib_cache["data"] = data
+        _lib_cache["gid"] = gid      # v1.5.82: 记住这份缓存属于哪个游戏
         return data
 
     def set_char(self, body):

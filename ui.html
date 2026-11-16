@@ -254,10 +254,16 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 .btn.selbtn{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
 
 /* 自定义文件夹选择器 */
+/* v1.5.82: z-index 必须**高于** #libmgr —— 「仓库管理」面板点「📁 手动寻找仓库路径…」
+   会在面板仍然打开的情况下叠出目录选择器。原来两者同为 70, 而 libmgr 在 DOM 里
+   排在后面, 于是选择器被面板压住: 看得见却点不到任何目录, 用户的实际感受就是
+   「寻找仓库用不了了」。现在选择器 78, 永远在最上层。 */
 .dp{position:fixed;left:50%;top:50%;transform:translate(-50%,-48%) scale(.98);z-index:70;
   width:min(680px,95vw);max-height:84vh;background:var(--bg2);border:1px solid var(--line);
   border-radius:14px;box-shadow:var(--shadow);display:none;flex-direction:column}
 .dp.on{display:flex;transform:translate(-50%,-50%) scale(1)}
+#libmgr{z-index:70}
+#dirpick{z-index:78}
 .dphd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
 .dphd b{font-size:14.5px}
 .dppath{flex:1;min-width:0;font-size:11.5px;color:var(--txt2);overflow:hidden;
@@ -1007,47 +1013,47 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 <!-- 自定义文件夹: 选任意目录当搬运目标 -->
 <div id="dirpick" class="dp">
   <div class="dphd">
-    <b>${esc(t("dp.title"))}</b>
+    <b><span data-i18n="dp.title">📁 选择文件夹</span></b>
     <span id="dpPath" class="dppath"></span>
     <button class="mini" id="dpClose" title="关闭" data-i18n-title="c.close">✕</button>
   </div>
   <div class="dpquick">
-    <span class="hint">${esc(t("dp.quick"))}</span>
+    <span class="hint"><span data-i18n="dp.quick">快速:</span></span>
     <span id="dpQuick"></span>
   </div>
   <div id="dpList" class="dplist"></div>
   <div class="dpft">
-    <button class="mini" id="dpUp">${esc(t("dp.up"))}</button>
-    <button class="mini" id="dpNew">${esc(t("dp.newHere"))}</button>
+    <button class="mini" id="dpUp"><span data-i18n="dp.up">↑ 上级</span></button>
+    <button class="mini" id="dpNew"><span data-i18n="dp.newHere">＋ 在此新建文件夹</span></button>
     <span class="sp"></span>
     <button class="mini" id="dpCancel" data-i18n="common.cancel">取消</button>
-    <button class="btn selbtn" id="dpOk">${esc(t("dp.ok"))}</button>
+    <button class="btn selbtn" id="dpOk"><span data-i18n="dp.ok">✔ 就搬到这里</span></button>
   </div>
 </div>
 
 <!-- 仓库管理: 添加/移除仓库(只动列表, 不删磁盘文件) -->
 <div id="libmgr" class="dp">
   <div class="dphd">
-    <b>${esc(t("libmgr.title"))}</b>
-    <span class="hint">${esc(t("libmgr.note"))}</span>
+    <b><span data-i18n="libmgr.title">🗄 仓库管理</span></b>
+    <span class="hint"><span data-i18n="libmgr.note">这里只是「登记表」, 移除一项不会删磁盘上的任何东西</span></span>
     <button class="mini" id="lmClose" title="关闭" data-i18n-title="c.close">✕</button>
   </div>
   <div class="lmadd">
-    <div class="hint" style="margin-bottom:6px">${esc(t("libmgr.add"))}</div>
+    <div class="hint" style="margin-bottom:6px"><span data-i18n="libmgr.add">＋ 添加仓库</span></div>
     <div class="lmrow">
       <input class="inp" id="lmName" placeholder="仓库名, 例如 未使用" data-i18n-ph="lib.namePh" spellcheck="false">
-      <button class="mini" id="lmNewRoot">${esc(t("libmgr.newUnder"))}</button>
+      <button class="mini" id="lmNewRoot"><span data-i18n="libmgr.newUnder">＋ 在 XXMI 下新建</span></button>
     </div>
     <div class="lmrow">
-      <button class="mini" id="lmFind">${esc(t("libmgr.find"))}</button>
-      <span class="hint">${esc(t("libmgr.lockHint"))}</span>
+      <button class="mini" id="lmFind"><span data-i18n="libmgr.find">📁 手动寻找仓库路径…</span></button>
+      <span class="hint"><span data-i18n="libmgr.lockHint">（锁定一个磁盘上已存在的文件夹, 任意盘都行）</span></span>
     </div>
   </div>
   <div id="lmList" class="dplist"></div>
   <div class="dpft">
-    <span class="hint">${esc(t("libmgr.moveHint"))}</span>
+    <span class="hint"><span data-i18n="libmgr.moveHint">想搬 mod 时: 回主界面点顶栏「☑ 多选搬运」</span></span>
     <span class="sp"></span>
-    <button class="btn selbtn" id="lmDone">${esc(t("libmgr.done"))}</button>
+    <button class="btn selbtn" id="lmDone"><span data-i18n="libmgr.done">完成</span></button>
   </div>
 </div>
 
@@ -1174,8 +1180,8 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
       <button class="btn mini" data-bi="2" data-i18n-title="tip.oldest" title="最旧一批" style="display:none">📦3</button>
     </span>
     <span class="sp"></span>
-    <button class="btn" id="pbPick" data-i18n-title="tip.pbPick" title="进入勾选模式: 一张张勾出想留下的, 再一次性落盘">${esc(t("pb.keepSelShort"))}</button>
-    <button class="btn" id="pbPickX" style="display:none" data-i18n-title="tip.pbPickX" title="退出勾选模式, 回到逐张翻看">${esc(t("pb.exitPickShort"))}</button>
+    <button class="btn" id="pbPick" data-i18n-title="tip.pbPick" title="进入勾选模式: 一张张勾出想留下的, 再一次性落盘"><span data-i18n="pb.keepSelShort">☑ 选择留下</span></button>
+    <button class="btn" id="pbPickX" style="display:none" data-i18n-title="tip.pbPickX" title="退出勾选模式, 回到逐张翻看"><span data-i18n="pb.exitPickShort">↩ 退出选择</span></button>
     <button class="btn primary" id="pbKeep" data-i18n="pb.keep">留这张</button>
     <button class="btn" id="pbClose" data-i18n="common.close" data-i18n-title="tip.pbClose" title="关掉这个窗口而已 —— 缓存一批都不会丢, 下次从「📸 连拍」或 📦 按钮还能翻回来">关闭</button>
   </div>
@@ -1206,7 +1212,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 
 <!-- 启停被占用/拒绝访问 -> 弹教程让玩家手动改名 -->
 <div class="modal" id="mManual">
-  <div class="dh"><h3 id="mmTitle">${esc(t("manual.title"))}</h3>
+  <div class="dh"><h3 id="mmTitle"><span data-i18n="manual.title">⚠ 改不了名, 得手动来一下</span></h3>
     <button class="xbtn" data-close="mManual">✕</button></div>
   <div class="dbody" id="mmBody"></div>
   <div class="dfoot">
@@ -1236,16 +1242,16 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     <div class="gbhint hint" data-i18n-html="gb.tip">支持: 分类页 <code>/mods/cats/数字</code> · 游戏全部 mod <code>/mods/games/数字</code> · 单个 mod <code>/mods/数字</code>。 mod 名会自动翻译成中文(可关)。</div>
     <!-- v1.5.13: 角色筛选 -->
     <div class="gbsubbar">
-      <span class="hint" style="white-space:nowrap">${esc(t("gb.char"))}</span>
-      <select class="inp sel" id="gbSub"><option value="">${esc(t("gb.allChars"))}</option></select>
+      <span class="hint" style="white-space:nowrap"><span data-i18n="gb.char">角色</span></span>
+      <select class="inp sel" id="gbSub"><option value=""><span data-i18n="gb.allChars">全部角色(不过滤)</span></option></select>
       <button class="btn mini3" id="gbSubReload" data-i18n="common.refresh" data-i18n-title="tip.gbSubReload" title="重新从香蕉网拉一次角色列表">↻ 刷新</button>
       <span class="hint" id="gbSubInfo"></span>
     </div>
     <div class="gbbar">
       <span id="gbCount" class="hint"></span>
-      <label class="gbtog" data-i18n-title="tip.gbTr" title="显示/隐藏中文译名"><input type="checkbox" id="gbTr" checked /> ${esc(t("gb.zhName"))}</label>
+      <label class="gbtog" data-i18n-title="tip.gbTr" title="显示/隐藏中文译名"><input type="checkbox" id="gbTr" checked /> <span data-i18n="gb.zhName">中文译名</span></label>
       <label class="gbtog" data-i18n-title="tip.gbFiles" title="自动列出每个 mod 的文件供勾选(请求变多, 稍慢)">
-        <input type="checkbox" id="gbFilesTog" checked /> ${esc(t("gb.listFiles"))}</label>
+        <input type="checkbox" id="gbFilesTog" checked /> <span data-i18n="gb.listFiles">列出文件</span></label>
       <span class="sp"></span>
       <button class="btn gbPrev" id="gbPrev" data-i18n="gb.prev">‹ 上一页</button>
       <span id="gbPage" class="hint gbPage"></span>
@@ -1253,7 +1259,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
       <button class="btn" id="gbDlDir" data-i18n="gb.dlDir">🗂 下载目录</button>
     </div>
     <div id="gbGrid" class="gbgrid"></div>
-    <div id="gbEmpty" class="empty">${esc(t("gb.empty"))}</div>
+    <div id="gbEmpty" class="empty"><span data-i18n="gb.empty">输入 GameBanana 链接后点「开始爬取」</span></div>
     <!-- v1.5.23: 底部翻页条 —— 列表很长时不必滑回顶部才能翻页 -->
     <div class="gbbar gbbar-btm" id="gbPagerBtm" style="display:none">
       <span class="sp"></span>
@@ -1827,6 +1833,8 @@ const LANG_PACK = {
     "libmgr.lockHint": "（锁定一个磁盘上已存在的文件夹, 任意盘都行）",
     "libmgr.moveHint": "想搬 mod 时: 回主界面点顶栏「☑ 多选搬运」",
     "libmgr.done": "完成",
+    "libmgr.lockTitle": "🔒 选一个文件夹锁定成仓库",
+    "libmgr.lockOk": "✔ 锁定为仓库",
     "side.noChar": "没有匹配的角色",
     "side.noMod": "还没有扫描到 mod",
     "photo.section": "连拍缓冲",
@@ -1962,6 +1970,9 @@ const LANG_PACK = {
     "gb.zhName": "中文译名",
     "gb.listFiles": "列出文件",
     "gb.dlDir": "🗂 下载目录",
+    "gb.dlEmpty": "下载目录还是空的",
+    "gb.dlStat": "目录里 {0} 个文件 · 共 {1} · 位置 {2}",
+    "gb.dlReading": "读取中…",
     "gb.empty": "输入 GameBanana 链接后点「开始爬取」",
     "gb.prev": "‹ 上一页",
     "gb.next": "下一页 ›",
@@ -2516,6 +2527,8 @@ const LANG_PACK = {
     "libmgr.lockHint": "(lock any existing folder on any drive)",
     "libmgr.moveHint": "To move mods: go back and click \u201c☑ Multi-move\u201d in the header",
     "libmgr.done": "Done",
+    "libmgr.lockTitle": "🔒 Pick a folder to lock as a library",
+    "libmgr.lockOk": "✔ Lock as library",
     "side.noChar": "No matching characters",
     "side.noMod": "No mods scanned yet",
     "photo.section": "Burst buffer",
@@ -2651,6 +2664,9 @@ const LANG_PACK = {
     "gb.zhName": "Chinese names",
     "gb.listFiles": "List files",
     "gb.dlDir": "🗂 Download folder",
+    "gb.dlEmpty": "The download folder is still empty",
+    "gb.dlStat": "{0} file(s) in folder · {1} total · at {2}",
+    "gb.dlReading": "Reading…",
     "gb.empty": "Paste a GameBanana link and hit “Start crawling”",
     "gb.prev": "‹ Prev",
     "gb.next": "Next ›",
@@ -3888,8 +3904,22 @@ function openDirPick(opt){
   const box = $("#dirpick");
   if (!box) return;
   dpOpt = opt || null;
-  box.querySelector(".dphd b").textContent = (dpOpt && dpOpt.title) || t("dp.titleShort");
-  $("#dpOk").textContent = (dpOpt && dpOpt.ok) || t("dp.okDefault");
+  // v1.5.82: 标题/确定按钮改成**写词条 key**（titleKey / okKey），不再把翻译好的
+  // 字符串直接塞进 DOM。原来存的是已翻译文本, 切语言后 applyI18n 无从下手,
+  // 用户看到的就是「切英文了但目录选择器标题还是中文」。
+  // 现在把 key 挂成 data-i18n, 由 applyI18n 统一刷新, 中英都能跟着变。
+  const tKey = (dpOpt && (dpOpt.titleKey || dpOpt.title)) || "dp.titleShort";
+  const oKey = (dpOpt && (dpOpt.okKey || dpOpt.ok)) || "dp.okDefault";
+  const hd = box.querySelector(".dphd b");
+  if (hd){
+    hd.setAttribute("data-i18n", tKey);
+    hd.textContent = t(tKey);
+  }
+  const okBtn = $("#dpOk");
+  if (okBtn){
+    okBtn.setAttribute("data-i18n", oKey);
+    okBtn.textContent = t(oKey);
+  }
   box.classList.add("on");
   $("#dpClose").onclick = closeDirPick;
   $("#dpCancel").onclick = closeDirPick;
@@ -3921,8 +3951,12 @@ function openDirPick(opt){
     if (!r.ok) return toast(r.msg || t("toast.couldn_t_create_that_folder"), "err");
     dpLoad(r.path || p);
   };
-  dpLoad(dpCur || "");
-  applyI18n($('#mDP'));
+  // v1.5.82: 原来这里是 dpLoad(dpCur || "") —— 首次打开 dpCur 为空, 后端收到空路径
+  // 只会回「请选一个位置」+ 空列表, 界面看着就是**点了没反应**（用户反馈
+  // 「新建和寻找仓库都用不了了」）。现在空的时候直接定位到 XXMI 根目录,
+  // 一打开就能看见一堆可选的文件夹, 这就是「寻找仓库」该有的样子。
+  dpLoad(dpCur || (S && S.xxmi_root) || "");
+  applyI18n($('#dirpick'));
 }
 function closeDirPick(){
   const box = $("#dirpick");
@@ -3982,7 +4016,7 @@ function openLibMgr(force){
   $("#lmDone").onclick = closeLibMgr;
   $("#lmNewRoot").onclick = addLibRoot;
   $("#lmFind").onclick = () => openDirPick({
-    title: "🔒 选一个文件夹锁定成仓库", ok: "✔ 锁定为仓库",
+    titleKey: "libmgr.lockTitle", okKey: "libmgr.lockOk",
     onPick: (p) => addLibAbs(p)
   });
   const nameEl = $("#lmName");
@@ -3992,7 +4026,7 @@ function openLibMgr(force){
   }
   box.classList.add("on");
   renderLibMgrList();
-  applyI18n($('#mDP'));
+  applyI18n($('#libmgr'));
 }
 function closeLibMgr(){
   const box = $("#libmgr");
@@ -5213,7 +5247,7 @@ async function openLib(){
   if (bAdd) bAdd.onclick = () => { closeAll(); openLibMgr(true); };
   if (bFind) bFind.onclick = () => {
     closeAll();
-    openDirPick({title: "🔒 选一个文件夹锁定成仓库", ok: "✔ 锁定为仓库",
+    openDirPick({titleKey: "libmgr.lockTitle", okKey: "libmgr.lockOk",
                  onPick: (p) => addLibAbs(p)});
   };
   $("#libBody").querySelectorAll("[data-openlib]").forEach(b => b.onclick = () =>
@@ -5236,7 +5270,7 @@ async function openLib(){
     }
     if (target === "__find__"){
       // 手动找一个已存在的文件夹当仓库, 选完再加进来(不直接搬, 让用户确认)
-      openDirPick({title: "🔒 选一个文件夹锁定成仓库", ok: "✔ 锁定为仓库",
+      openDirPick({titleKey: "libmgr.lockTitle", okKey: "libmgr.lockOk",
                    onPick: async (p) => {
                      const a = await addLibAbs(p);
                      if (a.ok) openLib();
@@ -5805,10 +5839,10 @@ async function gbRefreshDl(){
     const items = d.items || [];
     const tot = items.reduce((a, x) => a + (x.size || 0), 0);
     if ($("#gbDlStat")){
-      $("#gbDlStat").textContent = "目录里 " + items.length + " 个文件 · 共 " + human(tot)
-        + " · 位置 " + (d.dir || "");
+      // v1.5.82: 原来这里是硬编码中文, 切英文后仍显示「目录里 N 个文件 · 共 …」
+      $("#gbDlStat").textContent = t("gb.dlStat", items.length, human(tot), d.dir || "");
     }
-    if (!items.length){ $("#gbDlList").innerHTML = '<div class="empty">下载目录还是空的</div>'; return; }
+    if (!items.length){ $("#gbDlList").innerHTML = '<div class="empty">' + esc(t("gb.dlEmpty")) + '</div>'; return; }
     $("#gbDlList").innerHTML = '<div class="tree">' + items.map(it =>
       '<div class="gbdlrow"><span class="nm">' + esc(it.name) + '</span>'
       + '<span class="sz">' + esc(it.size_h) + '</span>'
